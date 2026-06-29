@@ -1,0 +1,475 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 70;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000001 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* main.swift */; };
+		100000000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* AppDelegate.swift */; };
+		100000000000000000000003 /* GestureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* GestureModels.swift */; };
+		100000000000000000000004 /* ActivityLogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* ActivityLogStore.swift */; };
+		100000000000000000000008 /* LoggingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* LoggingView.swift */; };
+		100000000000000000000009 /* TouchXMultitouch.c in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* TouchXMultitouch.c */; };
+		100000000000000000000015 /* SwiftBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* SwiftBridge.swift */; };
+		100000000000000000000017 /* EventSuppressionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000017 /* EventSuppressionController.swift */; };
+		100000000000000000000019 /* CTrackpadBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000019 /* CTrackpadBridge.swift */; };
+		10000000000000000000001B /* QuickActionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001B /* QuickActionModels.swift */; };
+		10000000000000000000001C /* QuickActionSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001C /* QuickActionSurface.swift */; };
+		10000000000000000000001D /* ClipboardHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001D /* ClipboardHistoryView.swift */; };
+		10000000000000000000001E /* EmojiPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001E /* EmojiPickerView.swift */; };
+		10000000000000000000001F /* ClipboardHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001F /* ClipboardHistoryStore.swift */; };
+		100000000000000000000022 /* TrackpadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* TrackpadSnapshot.swift */; };
+		100000000000000000000023 /* ListenerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023 /* ListenerModels.swift */; };
+		100000000000000000000024 /* BackendEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000024 /* BackendEvent.swift */; };
+		100000000000000000000025 /* HUDModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000025 /* HUDModels.swift */; };
+		100000000000000000000026 /* ListenerPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000026 /* ListenerPipeline.swift */; };
+		100000000000000000000027 /* HUDStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000027 /* HUDStore.swift */; };
+		100000000000000000000028 /* HUDWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000028 /* HUDWindowPresenter.swift */; };
+		10000000000000000000002A /* TimerHUDInputListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002A /* TimerHUDInputListener.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		200000000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		200000000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		200000000000000000000003 /* GestureModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureModels.swift; sourceTree = "<group>"; };
+		200000000000000000000004 /* ActivityLogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityLogStore.swift; sourceTree = "<group>"; };
+		200000000000000000000008 /* LoggingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggingView.swift; sourceTree = "<group>"; };
+		200000000000000000000009 /* TouchXMultitouch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = TouchXMultitouch.c; sourceTree = "<group>"; };
+		20000000000000000000000A /* TouchXMultitouch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TouchXMultitouch.h; sourceTree = "<group>"; };
+		20000000000000000000000B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		20000000000000000000000C /* TouchX-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TouchX-Bridging-Header.h"; sourceTree = "<group>"; };
+		20000000000000000000000D /* TouchX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TouchX.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000015 /* SwiftBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftBridge.swift; sourceTree = "<group>"; };
+		200000000000000000000017 /* EventSuppressionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventSuppressionController.swift; sourceTree = "<group>"; };
+		200000000000000000000019 /* CTrackpadBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CTrackpadBridge.swift; sourceTree = "<group>"; };
+		20000000000000000000001B /* QuickActionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionModels.swift; sourceTree = "<group>"; };
+		20000000000000000000001C /* QuickActionSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionSurface.swift; sourceTree = "<group>"; };
+		20000000000000000000001D /* ClipboardHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardHistoryView.swift; sourceTree = "<group>"; };
+		20000000000000000000001E /* EmojiPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiPickerView.swift; sourceTree = "<group>"; };
+		20000000000000000000001F /* ClipboardHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardHistoryStore.swift; sourceTree = "<group>"; };
+		200000000000000000000022 /* TrackpadSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadSnapshot.swift; sourceTree = "<group>"; };
+		200000000000000000000023 /* ListenerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenerModels.swift; sourceTree = "<group>"; };
+		200000000000000000000024 /* BackendEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendEvent.swift; sourceTree = "<group>"; };
+		200000000000000000000025 /* HUDModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDModels.swift; sourceTree = "<group>"; };
+		200000000000000000000026 /* ListenerPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenerPipeline.swift; sourceTree = "<group>"; };
+		200000000000000000000027 /* HUDStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDStore.swift; sourceTree = "<group>"; };
+		200000000000000000000028 /* HUDWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDWindowPresenter.swift; sourceTree = "<group>"; };
+		20000000000000000000002A /* TimerHUDInputListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerHUDInputListener.swift; sourceTree = "<group>"; };
+		AE84834E2FE19DCA00446B38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .gitignore; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		AE1483D42FF2F177008D484B /* Timer */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Timer; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		300000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		400000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000002 /* Sources/TouchX */,
+				400000000000000000000003 /* Sources/TouchXMultitouch */,
+				400000000000000000000005 /* Config */,
+				400000000000000000000006 /* Products */,
+				AE84834E2FE19DCA00446B38 /* .gitignore */,
+			);
+			sourceTree = "<group>";
+		};
+		400000000000000000000002 /* Sources/TouchX */ = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000007 /* App */,
+				400000000000000000000008 /* Core */,
+				40000000000000000000000C /* Features */,
+				400000000000000000000012 /* Infrastructure */,
+			);
+			path = Sources/TouchX;
+			sourceTree = SOURCE_ROOT;
+		};
+		400000000000000000000003 /* Sources/TouchXMultitouch */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000009 /* TouchXMultitouch.c */,
+				400000000000000000000004 /* include */,
+			);
+			path = Sources/TouchXMultitouch;
+			sourceTree = SOURCE_ROOT;
+		};
+		400000000000000000000004 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000A /* TouchXMultitouch.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		400000000000000000000005 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000B /* Info.plist */,
+				20000000000000000000000C /* TouchX-Bridging-Header.h */,
+			);
+			path = Config;
+			sourceTree = SOURCE_ROOT;
+		};
+		400000000000000000000006 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000D /* TouchX.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		400000000000000000000007 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000001 /* main.swift */,
+				200000000000000000000002 /* AppDelegate.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		400000000000000000000008 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000009 /* Models */,
+				40000000000000000000000A /* Persistence */,
+				40000000000000000000000B /* Services */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		400000000000000000000009 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000003 /* GestureModels.swift */,
+				200000000000000000000022 /* TrackpadSnapshot.swift */,
+				200000000000000000000023 /* ListenerModels.swift */,
+				200000000000000000000024 /* BackendEvent.swift */,
+				200000000000000000000025 /* HUDModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000A /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000004 /* ActivityLogStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000B /* Services */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000C /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000015 /* HUD */,
+				40000000000000000000000D /* Logging */,
+				40000000000000000000000E /* QuickActions */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000D /* Logging */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000008 /* LoggingView.swift */,
+			);
+			path = Logging;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000E /* QuickActions */ = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000014 /* Clipboard */,
+				40000000000000000000000F /* Models */,
+				400000000000000000000011 /* Views */,
+			);
+			path = QuickActions;
+			sourceTree = "<group>";
+		};
+		40000000000000000000000F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000001B /* QuickActionModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		400000000000000000000011 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000001C /* QuickActionSurface.swift */,
+				20000000000000000000001D /* ClipboardHistoryView.swift */,
+				20000000000000000000001E /* EmojiPickerView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		400000000000000000000012 /* Infrastructure */ = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000013 /* Input */,
+			);
+			path = Infrastructure;
+			sourceTree = "<group>";
+		};
+		400000000000000000000013 /* Input */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000015 /* SwiftBridge.swift */,
+				200000000000000000000026 /* ListenerPipeline.swift */,
+				200000000000000000000017 /* EventSuppressionController.swift */,
+				200000000000000000000019 /* CTrackpadBridge.swift */,
+				400000000000000000000016 /* Listeners */,
+			);
+			path = Input;
+			sourceTree = "<group>";
+		};
+		400000000000000000000014 /* Clipboard */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000001F /* ClipboardHistoryStore.swift */,
+			);
+			path = Clipboard;
+			sourceTree = "<group>";
+		};
+		400000000000000000000015 /* HUD */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000027 /* HUDStore.swift */,
+				200000000000000000000028 /* HUDWindowPresenter.swift */,
+				AE1483D42FF2F177008D484B /* Timer */,
+			);
+			path = HUD;
+			sourceTree = "<group>";
+		};
+		400000000000000000000016 /* Listeners */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000002A /* TimerHUDInputListener.swift */,
+			);
+			path = Listeners;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		500000000000000000000001 /* TouchX */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 900000000000000000000002 /* Build configuration list for PBXNativeTarget "TouchX" */;
+			buildPhases = (
+				700000000000000000000001 /* Sources */,
+				300000000000000000000001 /* Frameworks */,
+				700000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AE1483D42FF2F177008D484B /* Timer */,
+			);
+			name = TouchX;
+			productName = TouchX;
+			productReference = 20000000000000000000000D /* TouchX.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		600000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2650;
+				LastUpgradeCheck = 2650;
+				TargetAttributes = {
+					500000000000000000000001 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+				};
+			};
+			buildConfigurationList = 900000000000000000000001 /* Build configuration list for PBXProject "TouchX" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 400000000000000000000001;
+			productRefGroup = 400000000000000000000006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				500000000000000000000001 /* TouchX */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		700000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		700000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000001 /* main.swift in Sources */,
+				100000000000000000000002 /* AppDelegate.swift in Sources */,
+				100000000000000000000003 /* GestureModels.swift in Sources */,
+				100000000000000000000004 /* ActivityLogStore.swift in Sources */,
+				100000000000000000000008 /* LoggingView.swift in Sources */,
+				100000000000000000000015 /* SwiftBridge.swift in Sources */,
+				100000000000000000000017 /* EventSuppressionController.swift in Sources */,
+				100000000000000000000019 /* CTrackpadBridge.swift in Sources */,
+				10000000000000000000001B /* QuickActionModels.swift in Sources */,
+				10000000000000000000001C /* QuickActionSurface.swift in Sources */,
+				10000000000000000000001D /* ClipboardHistoryView.swift in Sources */,
+				10000000000000000000001E /* EmojiPickerView.swift in Sources */,
+				10000000000000000000001F /* ClipboardHistoryStore.swift in Sources */,
+				100000000000000000000022 /* TrackpadSnapshot.swift in Sources */,
+				100000000000000000000023 /* ListenerModels.swift in Sources */,
+				100000000000000000000024 /* BackendEvent.swift in Sources */,
+				100000000000000000000025 /* HUDModels.swift in Sources */,
+				100000000000000000000026 /* ListenerPipeline.swift in Sources */,
+				100000000000000000000027 /* HUDStore.swift in Sources */,
+				100000000000000000000028 /* HUDWindowPresenter.swift in Sources */,
+				10000000000000000000002A /* TimerHUDInputListener.swift in Sources */,
+				100000000000000000000009 /* TouchXMultitouch.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		800000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		800000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		800000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/Sources/TouchXMultitouch/include";
+				INFOPLIST_FILE = Config/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ldl",
+					"-framework",
+					CoreFoundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = local.touchx.TouchX;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Config/TouchX-Bridging-Header.h";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		800000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/Sources/TouchXMultitouch/include";
+				INFOPLIST_FILE = Config/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ldl",
+					"-framework",
+					CoreFoundation,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = local.touchx.TouchX;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Config/TouchX-Bridging-Header.h";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		900000000000000000000001 /* Build configuration list for PBXProject "TouchX" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				800000000000000000000001 /* Debug */,
+				800000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		900000000000000000000002 /* Build configuration list for PBXNativeTarget "TouchX" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				800000000000000000000003 /* Debug */,
+				800000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 600000000000000000000001 /* Project object */;
+}
