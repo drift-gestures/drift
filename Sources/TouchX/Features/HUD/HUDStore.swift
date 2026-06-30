@@ -1,6 +1,24 @@
 import Combine
 import Foundation
 
+enum HUDMessage: Sendable {
+    case timerInput(TimerHUDInput)
+}
+
+struct TargetedHUDMessage: Sendable {
+    let hudID: HUDID
+    let message: HUDMessage
+}
+
+@MainActor
+final class HUDMessageBus: ObservableObject {
+    let messages = PassthroughSubject<TargetedHUDMessage, Never>()
+
+    func send(_ message: HUDMessage, to hudID: HUDID) {
+        messages.send(TargetedHUDMessage(hudID: hudID, message: message))
+    }
+}
+
 final class HUDVisibilityState: @unchecked Sendable {
     private let lock = NSLock()
     private var activeHUDs: Set<HUDID> = []
@@ -24,7 +42,6 @@ final class HUDStore: ObservableObject {
     @Published private(set) var activeHUDs: Set<HUDID> = []
     @Published private(set) var customStates: [String: HUDState] = [:]
     @Published private(set) var trackpadState = TrackpadState.idle
-    @Published private(set) var latestTimerHUDInput: TimerHUDInput?
 
     private let visibilityState: HUDVisibilityState?
 
@@ -60,15 +77,6 @@ final class HUDStore: ObservableObject {
 
     func updateTrackpad(_ snapshot: TrackpadSnapshot) {
         trackpadState.latestSnapshot = snapshot
-    }
-
-    func handle(_ event: BackendEvent) {
-        switch event {
-        case .timerHUDActivationRequested:
-            activate(TimerHUDDefinition.hudID)
-        case .timerHUDInput(let input):
-            latestTimerHUDInput = input
-        }
     }
 
     private func setActiveHUDs(_ huds: Set<HUDID>) {

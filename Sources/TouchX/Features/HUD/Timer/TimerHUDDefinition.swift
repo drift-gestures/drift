@@ -47,7 +47,7 @@ struct TimerHUDDefinition: HudDefinition {
 private struct TimerHUDView: View {
     
     let screenSize: CGSize;
-    @EnvironmentObject private var hudStore: HUDStore
+    @EnvironmentObject private var hudMessages: HUDMessageBus
     @State var duration: Int = 0;
     @State private var loaded = false
     
@@ -115,7 +115,16 @@ private struct TimerHUDView: View {
                 loaded = true
             }
         }
-        .onReceive(hudStore.$latestTimerHUDInput.compactMap { $0 }) { input in
+        .onReceive(hudMessages.messages) { message in
+            receiveHUDMessage(message)
+        }
+    }
+
+    private func receiveHUDMessage(_ targetedMessage: TargetedHUDMessage) {
+        guard targetedMessage.hudID == TimerHUDDefinition.hudID else { return }
+
+        switch targetedMessage.message {
+        case .timerInput(let input):
             receiveTimerHUDInput(input)
         }
     }
