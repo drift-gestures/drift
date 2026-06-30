@@ -42,10 +42,10 @@ final class ListenerArchitectureTests: XCTestCase {
     }
 
     func testBottomLeftUpSwipeRequestsTimerHUDActivationAndClaimsInteraction() {
-        var listener = TimerHUDInputListener(isTimerHUDOpen: { false })
+        var listener = TimerHUDInputListener()
 
         _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
-        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.12, y: 0.21), frame: 2))
+        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.12, y: 0.31), frame: 2))
 
         XCTAssertTrue(result.claimInteraction)
         XCTAssertEqual(result.suppressions, [.scroll(axis: .vertical)])
@@ -55,25 +55,24 @@ final class ListenerArchitectureTests: XCTestCase {
         }
     }
 
-    func testChangedTwoFingerFrameCanStartTimerHUDActivation() {
-        var listener = TimerHUDInputListener(isTimerHUDOpen: { false })
+    func testWaitingChangedFrameStartsOnlyActivationPossibility() {
+        var listener = TimerHUDInputListener()
 
-        _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1, fingerCount: 1))
-        _ = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.1), frame: 2))
-        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.21), frame: 3))
+        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
 
-        XCTAssertTrue(result.claimInteraction)
-        XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDActivationRequested = result.emittedEvents.first else {
-            return XCTFail("Expected timer HUD activation request.")
+        XCTAssertFalse(result.claimInteraction)
+        XCTAssertTrue(result.emittedEvents.isEmpty)
+        if case .possible = listener.gestureStatus {
+        } else {
+            XCTFail("Expected waiting listener to record a possible activation gesture.")
         }
     }
 
     func testInvertedYAxisBottomLeftSwipeCanActivateTimerHUD() {
-        var listener = TimerHUDInputListener(isTimerHUDOpen: { false })
+        var listener = TimerHUDInputListener()
 
         _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.9), frame: 1))
-        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.79), frame: 2))
+        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.69), frame: 2))
 
         XCTAssertTrue(result.claimInteraction)
         XCTAssertEqual(result.emittedEvents.count, 1)
@@ -83,7 +82,7 @@ final class ListenerArchitectureTests: XCTestCase {
     }
 
     func testUpSwipeAfterActivationEmitsTimerDurationInput() {
-        var listener = TimerHUDInputListener(isTimerHUDOpen: { false })
+        var listener = TimerHUDInputListener()
 
         _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
         _ = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 2))
@@ -100,11 +99,11 @@ final class ListenerArchitectureTests: XCTestCase {
     }
 
     func testInvertedYAxisSwipeAfterActivationEmitsTimerDurationInput() {
-        var listener = TimerHUDInputListener(isTimerHUDOpen: { false })
+        var listener = TimerHUDInputListener()
 
         _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.9), frame: 1))
-        _ = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.79), frame: 2))
-        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.75), frame: 3))
+        _ = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.69), frame: 2))
+        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.65), frame: 3))
 
         XCTAssertTrue(result.claimInteraction)
         XCTAssertEqual(result.suppressions, [.scroll(axis: .vertical)])
@@ -116,8 +115,71 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertEqual(input.frame, 3)
     }
 
+    func testCancelledActivationDoesNotRestartUntilEnd() {
+        var listener = TimerHUDInputListener()
+
+        _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
+        let cancelled = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.35, y: 0.11), frame: 2))
+
+        XCTAssertFalse(cancelled.claimInteraction)
+        XCTAssertTrue(cancelled.emittedEvents.isEmpty)
+        if case .cancelled = listener.gestureStatus {
+        } else {
+            XCTFail("Expected broken activation movement to cancel the gesture.")
+        }
+
+        let blocked = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 3))
+        XCTAssertFalse(blocked.claimInteraction)
+        XCTAssertTrue(blocked.emittedEvents.isEmpty)
+
+        _ = listener.onStateChange(snapshot(.ended, center: CGPoint(x: 0.1, y: 0.31), frame: 4))
+        _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 5))
+        let restarted = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 6))
+
+        XCTAssertTrue(restarted.claimInteraction)
+        XCTAssertEqual(restarted.emittedEvents.count, 1)
+        guard case .timerHUDActivationRequested = restarted.emittedEvents.first else {
+            return XCTFail("Expected timer HUD activation request after reset.")
+        }
+    }
+
+    func testScrollAndPinchInputAreIgnoredUntilGestureIsProgressing() {
+        var listener = TimerHUDInputListener()
+
+        let waitingResult = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.54, y: 0.5), frame: 1))
+        XCTAssertFalse(waitingResult.claimInteraction)
+        XCTAssertTrue(waitingResult.emittedEvents.isEmpty)
+
+        _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 2))
+        let possibleResult = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.1), frame: 3, scale: 1.2))
+
+        XCTAssertFalse(possibleResult.claimInteraction)
+        XCTAssertTrue(possibleResult.emittedEvents.isEmpty)
+        if case .possible = listener.gestureStatus {
+        } else {
+            XCTFail("Expected pinch-like input to be ignored while activation is only possible.")
+        }
+    }
+
+    func testProgressingGestureSendsTimerHUDInput() {
+        var listener = TimerHUDInputListener()
+
+        _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
+        _ = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 2))
+        let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.14, y: 0.31), frame: 3))
+
+        XCTAssertTrue(result.claimInteraction)
+        XCTAssertEqual(result.suppressions, [.scroll(axis: .horizontal)])
+        XCTAssertEqual(result.emittedEvents.count, 1)
+        guard case .timerHUDInput(let input) = result.emittedEvents.first else {
+            return XCTFail("Expected timer HUD input.")
+        }
+        XCTAssertEqual(input.kind, .scrollRight)
+        XCTAssertEqual(input.frame, 3)
+    }
+
     func testReleasingActivationGestureDoesNotEmitFollowUpEvent() {
-        var listener = TimerHUDInputListener(isTimerHUDOpen: { false })
+        var listener = TimerHUDInputListener()
 
         _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
         _ = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 2))
@@ -132,7 +194,7 @@ final class ListenerArchitectureTests: XCTestCase {
     }
 
     func testUpSwipeAwayFromBottomLeftDoesNotActivateTimerHUD() {
-        var listener = TimerHUDInputListener(isTimerHUDOpen: { false })
+        var listener = TimerHUDInputListener()
 
         _ = listener.onStateChange(snapshot(.began, center: CGPoint(x: 0.5, y: 0.5), frame: 1))
         let result = listener.onStateChange(snapshot(.changed, center: CGPoint(x: 0.5, y: 0.8), frame: 2))
@@ -145,7 +207,8 @@ final class ListenerArchitectureTests: XCTestCase {
         _ phase: TrackpadPhase,
         center: CGPoint = CGPoint(x: 0.5, y: 0.5),
         frame: Int = 1,
-        fingerCount: Int = 2
+        fingerCount: Int = 2,
+        scale: Double = 1
     ) -> TrackpadSnapshot {
         TrackpadSnapshot(
             contacts: phase == .ended ? [] : Array(repeating: contact, count: fingerCount),
@@ -153,7 +216,7 @@ final class ListenerArchitectureTests: XCTestCase {
             frame: frame,
             phase: phase,
             center: center,
-            scale: 1,
+            scale: scale,
             rotation: 0
         )
     }

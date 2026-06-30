@@ -18,11 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var swiftBridge = SwiftBridge(
         activityLog: activityLog,
         listeners: [
-            TimerHUDInputListener(
-                isTimerHUDOpen: { [hudVisibilityState] in
-                    hudVisibilityState.isActive(TimerHUDDefinition.hudID)
-                }
-            )
+            TimerHUDInputListener()
         ],
         eventReceiver: { [weak self] event in
             self?.handleBackendEvent(event)

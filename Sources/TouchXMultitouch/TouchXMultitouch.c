@@ -71,6 +71,15 @@ static double lastRotation = 0.0;
 static TXMTContact *contactBuffer = NULL;
 static int contactBufferCapacity = 0;
 
+typedef struct {
+    int identifier;
+    int fingerId;
+    int handId;
+} TXMTContactIdentity;
+
+static TXMTContactIdentity *trackedContacts = NULL;
+static int trackedContactCapacity = 0;
+
 static const char *loadMessage = "Not loaded";
 
 static void *lookupSymbol(const char *name) {
@@ -147,6 +156,59 @@ static bool ensureContactCapacity(int count) {
     contactBuffer = resized;
     contactBufferCapacity = count;
     return true;
+}
+
+static bool ensureTrackedContactCapacity(int count) {
+    if (count <= trackedContactCapacity) {
+        return true;
+    }
+    TXMTContactIdentity *resized = realloc(trackedContacts, sizeof(TXMTContactIdentity) * (size_t)count);
+    if (resized == NULL) {
+        return false;
+    }
+    trackedContacts = resized;
+    trackedContactCapacity = count;
+    return true;
+}
+
+static TXMTContactIdentity contactIdentity(TXMTFinger finger) {
+    return (TXMTContactIdentity) {
+        .identifier = finger.identifier,
+        .fingerId = finger.fingerId,
+        .handId = finger.handId
+    };
+}
+
+static bool sameContactIdentity(TXMTContactIdentity first, TXMTContactIdentity second) {
+    return first.identifier == second.identifier &&
+        first.fingerId == second.fingerId &&
+        first.handId == second.handId;
+}
+
+static bool contactListMatchesTracked(const TXMTFinger *fingers, int count) {
+    if (!tracking || count != trackingFingerCount) {
+        return false;
+    }
+
+    for (int storedIndex = 0; storedIndex < trackingFingerCount; storedIndex++) {
+        bool found = false;
+        for (int currentIndex = 0; currentIndex < count; currentIndex++) {
+            if (sameContactIdentity(trackedContacts[storedIndex], contactIdentity(fingers[currentIndex]))) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void storeTrackedContacts(const TXMTFinger *fingers, int count) {
+    for (int index = 0; index < count; index++) {
+        trackedContacts[index] = contactIdentity(fingers[index]);
+    }
 }
 
 static void copyContacts(const TXMTFinger *fingers, int count) {
@@ -238,11 +300,16 @@ static int contactFrameCallback(int device, void *data, int fingerCount, double 
         return 0;
     }
 
-    if (!ensureContactCapacity(fingerCount)) {
+    if (!ensureContactCapacity(fingerCount) || !ensureTrackedContactCapacity(fingerCount)) {
         return 0;
     }
 
     TXMTFinger *fingers = (TXMTFinger *)data;
+
+    if (tracking && !contactListMatchesTracked(fingers, fingerCount)) {
+        finishContactSequence(timestamp, frame);
+    }
+
     copyContacts(fingers, fingerCount);
 
     double sumX = 0.0;
@@ -274,6 +341,7 @@ static int contactFrameCallback(int device, void *data, int fingerCount, double 
 
     tracking = true;
     trackingFingerCount = fingerCount;
+    storeTrackedContacts(fingers, fingerCount);
     lastTimestamp = timestamp;
     lastFrame = frame;
     lastX = centerX;
@@ -343,6 +411,9 @@ void TXMTStop(void) {
     free(contactBuffer);
     contactBuffer = NULL;
     contactBufferCapacity = 0;
+    free(trackedContacts);
+    trackedContacts = NULL;
+    trackedContactCapacity = 0;
     tracking = false;
     trackingFingerCount = 0;
 }
