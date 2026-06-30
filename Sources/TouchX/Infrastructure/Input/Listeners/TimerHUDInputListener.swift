@@ -3,13 +3,12 @@ import CoreGraphics
 import Foundation
 
 struct TimerHUDInputListener: Listener {
-    var oldGestureStatus: GestureStatus = .waiting
     var gestureStatus: GestureStatus = .waiting
 
     private var pendingCenter: CGPoint?
     private var pendingScale = 1.0
 
-    private let activationThreshold: CGFloat = 0.2
+    private let activationThreshold: CGFloat = 0.1
     private let bottomLeftEdgeLimit: CGFloat = 0.2
     private let bottomEdgeLimit: CGFloat = 0.1
     private let bottomLeftLimit: CGFloat = 0.2
@@ -17,10 +16,6 @@ struct TimerHUDInputListener: Listener {
     private let pinchThreshold = 0.04
 
     mutating func onStateChange(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
-        if (oldGestureStatus.label != gestureStatus.label) {
-            oldGestureStatus = gestureStatus
-            print(oldGestureStatus.label)
-        }
         switch gestureStatus {
         case .waiting:
             return checkForTimerActivationStart(snapshot)
