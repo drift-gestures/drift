@@ -5,12 +5,14 @@ import SwiftUI
 @MainActor
 final class HUDWindowPresenter {
     private let hudStore: HUDStore
+    private let hudMessages: HUDMessageBus
     private let definitions: [HUDID: AnyHUDDefinition]
     private var windows: [HUDID: NSPanel] = [:]
     private var cancellable: AnyCancellable?
 
-    init(hudStore: HUDStore, definitions: [AnyHUDDefinition]) {
+    init(hudStore: HUDStore, hudMessages: HUDMessageBus, definitions: [AnyHUDDefinition]) {
         self.hudStore = hudStore
+        self.hudMessages = hudMessages
         self.definitions = Dictionary(uniqueKeysWithValues: definitions.map { ($0.id, $0) })
     }
 
@@ -51,6 +53,7 @@ final class HUDWindowPresenter {
         let frame = CGRect(origin: origin, size: definition.size)
         let rootView = definition.content(context: hudContext)
             .environmentObject(hudStore)
+            .environmentObject(hudMessages)
             .frame(width: definition.size.width, height: definition.size.height)
 
         let panel = NSPanel(
@@ -65,7 +68,7 @@ final class HUDWindowPresenter {
         panel.backgroundColor = .clear
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
-        panel.ignoresMouseEvents = true
+        panel.ignoresMouseEvents = false
         panel.isReleasedWhenClosed = false
 
         let hostingView = NSHostingView(rootView: rootView)
