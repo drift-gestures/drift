@@ -49,7 +49,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func configureMenuBar() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "drift"
+        print(Bundle.main.bundleURL.path)
+        if let url = Bundle.main.url(
+                forResource: "logo-accent-white-transparent",
+                withExtension: "png",
+            ),
+           let image = NSImage(contentsOf: url) {
+            image.size = NSSize(width: 20, height: 20)
+            image.isTemplate = true
+            item.button?.image = image
+        } else {
+            item.button?.title = "drift"
+        }
         let menu = NSMenu()
         menu.delegate = self
         let liveLogItem = NSMenuItem(title: "Open Live Log", action: #selector(openLiveLogFromMenu), keyEquivalent: ",")

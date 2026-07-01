@@ -61,8 +61,20 @@
 		AE84834E2FE19DCA00446B38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AE3C8F512FF551FE00EC474F /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"logo-accent-white-transparent.png",
+				"logo-accent-white-transparent.svg",
+			);
+			target = 500000000000000000000001 /* drift */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AE1483D42FF2F177008D484B /* Timer */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Timer; sourceTree = "<group>"; };
+		AE3C8F4D2FF5511E00EC474F /* assets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (AE3C8F512FF551FE00EC474F /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = assets; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +96,7 @@
 				400000000000000000000005 /* Config */,
 				400000000000000000000006 /* Products */,
 				AE84834E2FE19DCA00446B38 /* .gitignore */,
+				AE3C8F4D2FF5511E00EC474F /* assets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -402,6 +415,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = "$(SRCROOT)/Sources/driftMultitouch/include";
 				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = drift;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -430,6 +444,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = "$(SRCROOT)/Sources/driftMultitouch/include";
 				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = drift;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
