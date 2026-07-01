@@ -9,13 +9,23 @@ struct TimerHUDInputListener: Listener {
     private var pendingScale = 1.0
 
     private let activationThreshold: CGFloat = 0.1
-    private let bottomLeftEdgeLimit: CGFloat = 0.2
-    private let bottomEdgeLimit: CGFloat = 0.1
-    private let bottomLeftLimit: CGFloat = 0.2
+    private let bottomLeftEdgeLimit: CGFloat = 0.1
+    private let bottomEdgeLimit: CGFloat = 0.15
     private let scrollThreshold = 0.018
     private let pinchThreshold = 0.04
 
-    mutating func onStateChange(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
+    mutating func onInteraction(_ interaction: Interaction) -> ListenerDecision {
+        switch interaction {
+        case .trackpadSnapshot(let snapshot):
+            return onTrackpadSnapshot(snapshot)
+        case .clickOutside(let click):
+            return onClickOutside(click)
+        case .keyboardPress:
+            return ListenerDecision()
+        }
+    }
+
+    private mutating func onTrackpadSnapshot(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
         switch gestureStatus {
         case .waiting:
             return checkForTimerActivationStart(snapshot)
@@ -32,6 +42,13 @@ struct TimerHUDInputListener: Listener {
         case .cancelled, .ended:
             return ListenerDecision()
         }
+    }
+
+    private mutating func onClickOutside(_ click: ClickOutsideInteraction) -> ListenerDecision {
+        guard click.hudID == TimerHUDDefinition.hudID else { return ListenerDecision() }
+
+        reset()
+        return ListenerDecision(emittedEvents: [.timerHUDCloseRequested])
     }
 
     private mutating func checkForTimerActivationStart(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
@@ -127,7 +144,8 @@ struct TimerHUDInputListener: Listener {
 
     private func checkIfLowEnoughStartPoint(for center: CGPoint) -> Bool {
         guard center.x <= bottomLeftEdgeLimit else { return false }
-        if center.y >= bottomLeftEdgeLimit { return true }
+        print(center.y)
+        if center.y <= bottomEdgeLimit { return true }
         return false
     }
 
