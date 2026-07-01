@@ -2,14 +2,23 @@ import AppKit
 import SwiftUI
 
 @MainActor
+/// AppKit delegate that wires together the menu-bar app, input bridge, HUDs, and live log.
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    /// Menu-bar status item that owns the app menu.
     private var statusItem: NSStatusItem?
+    /// Lazily created live-log window.
     private var logWindow: NSWindow?
+    /// Menu item used to reflect and toggle Timer HUD visibility.
     private var timerHUDMenuItem: NSMenuItem?
+    /// In-memory diagnostics store displayed by the live log.
     private let activityLog = ActivityLogStore()
+    /// Thread-safe HUD visibility mirror shared with listener code.
     private let hudVisibilityState = HUDVisibilityState()
+    /// Message bus for delivering backend inputs to visible HUD views.
     private let hudMessages = HUDMessageBus()
+    /// Main-actor source of truth for HUD visibility and state.
     private lazy var hudStore = HUDStore(visibilityState: hudVisibilityState)
+    /// Presenter responsible for creating and monitoring floating HUD windows.
     private lazy var hudPresenter = HUDWindowPresenter(
         hudStore: hudStore,
         hudMessages: hudMessages,
@@ -18,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.swiftBridge.receive(interaction)
         }
     )
+    /// Input bridge that streams trackpad snapshots, runs listeners, and emits backend events.
     private lazy var swiftBridge = SwiftBridge(
         activityLog: activityLog,
         listeners: [
@@ -35,6 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     )
 
+    /// Starts the input bridge, menu-bar UI, HUD presenter, and live log after launch.
+    /// - Parameter notification: The AppKit launch notification.
     func applicationDidFinishLaunching(_ notification: Notification) {
         activityLog.record("drift launched with no registered gesture listeners.", category: .system)
         swiftBridge.start()
@@ -43,10 +55,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         openLiveLog()
     }
 
+    /// Stops input processing when the app is about to terminate.
+    /// - Parameter notification: The AppKit termination notification.
     func applicationWillTerminate(_ notification: Notification) {
         swiftBridge.stop()
     }
 
+    /// Builds the menu-bar status item and app menu.
     private func configureMenuBar() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         print(Bundle.main.bundleURL.path)
@@ -84,14 +99,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateHUDMenuState()
     }
 
+    /// Opens the live log from the menu item action.
     @objc private func openLiveLogFromMenu() {
         openLiveLog()
     }
 
+    /// Refreshes menu item state immediately before the menu opens.
+    /// - Parameter menu: The menu that is about to open.
     func menuWillOpen(_ menu: NSMenu) {
         updateHUDMenuState()
     }
 
+    /// Toggles Timer HUD visibility from the menu bar.
     @objc private func toggleTimerHUD() {
         hudStore.toggle(TimerHUDDefinition.hudID)
         let isActive = hudStore.activeHUDs.contains(TimerHUDDefinition.hudID)
@@ -99,6 +118,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateHUDMenuState()
     }
 
+    /// Applies semantic backend events to HUD state and messages.
+    /// - Parameter event: The event emitted by the input bridge.
     private func handleBackendEvent(_ event: BackendEvent) {
         switch event {
         case .timerHUDActivationRequested:
@@ -115,12 +136,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// Synchronizes the Timer HUD menu item title and checkmark with current HUD state.
     private func updateHUDMenuState() {
         let isActive = hudStore.activeHUDs.contains(TimerHUDDefinition.hudID)
         timerHUDMenuItem?.state = isActive ? .on : .off
         timerHUDMenuItem?.title = isActive ? "Hide Timer HUD" : "Show Timer HUD"
     }
 
+    /// Creates or focuses the live-log window.
     private func openLiveLog() {
         if logWindow == nil {
             let view = LoggingView(activityLog: activityLog, hudStore: hudStore)
@@ -135,6 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// Terminates the AppKit application.
     @objc private func quit() {
         NSApp.terminate(nil)
     }

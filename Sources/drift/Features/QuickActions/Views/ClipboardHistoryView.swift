@@ -2,8 +2,11 @@ import SwiftUI
 
 /// Displays clipboard candidates in a mirrored masonry layout that follows the overlay direction.
 struct ClipboardHistoryView: View {
+    /// Clipboard history source rendered by this view.
     @ObservedObject var history: ClipboardHistoryStore
+    /// Horizontal flow direction used to anchor columns.
     let horizontalFlow: MasonryHorizontalFlow
+    /// Vertical flow direction used to reverse card coordinates.
     let verticalFlow: MasonryVerticalFlow
 
     var body: some View {
@@ -43,6 +46,12 @@ struct ClipboardHistoryView: View {
         }
     }
 
+    /// Computes card positions for the mirrored masonry clipboard layout.
+    /// - Parameters:
+    ///   - items: Clipboard items to place.
+    ///   - availableWidth: Width available for the layout.
+    ///   - availableHeight: Height available for the layout.
+    /// - Returns: Precomputed masonry placements and total content height.
     private func masonryLayout(
         items: [ClipboardHistoryItem],
         availableWidth: CGFloat,
@@ -89,6 +98,9 @@ struct ClipboardHistoryView: View {
         return MasonryLayout(placements: finalPlacements, contentHeight: naturalHeight)
     }
 
+    /// Chooses a card height based on text length.
+    /// - Parameter item: Clipboard item to measure.
+    /// - Returns: The card height used by the masonry layout.
     private func height(for item: ClipboardHistoryItem) -> CGFloat {
         switch item.text.count {
         case ..<54:
@@ -103,7 +115,9 @@ struct ClipboardHistoryView: View {
 
 /// A compact, multiline preview card for one clipboard candidate.
 private struct ClipboardHistoryCard: View {
+    /// Clipboard item represented by the card.
     let item: ClipboardHistoryItem
+    /// Action that copies the item back to the pasteboard.
     let copy: () -> Void
 
     var body: some View {
@@ -122,6 +136,7 @@ private struct ClipboardHistoryCard: View {
         .buttonStyle(.plain)
     }
 
+    /// Text-and-icon preview shown inside the card button.
     private var textPreview: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: item.systemImage)

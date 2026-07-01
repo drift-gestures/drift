@@ -2,8 +2,11 @@ import SwiftUI
 
 /// Shows an emoji grid that mirrors to the same corner as the surrounding overlay surface.
 struct EmojiPickerView: View {
+    /// Emoji items to display in the grid.
     let items: [QuickActionItem]
+    /// Horizontal flow direction used to anchor the picker.
     let horizontalFlow: MasonryHorizontalFlow
+    /// Vertical flow direction used to order and anchor the picker.
     let verticalFlow: MasonryVerticalFlow
 
     var body: some View {
@@ -51,11 +54,13 @@ struct EmojiPickerView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: stackAlignment)
     }
 
+    /// Items ordered so the first candidate stays closest to the cursor-side origin.
     private var orderedItems: [QuickActionItem] {
         // Reversing the grid keeps the first selectable item closest to the cursor-side origin.
         verticalFlow == .bottomToTop ? Array(items.reversed()) : items
     }
 
+    /// Alignment that pins the picker to the active overlay corner.
     private var stackAlignment: Alignment {
         switch (horizontalFlow, verticalFlow) {
         case (.leftToRight, .topToBottom): return .topLeading

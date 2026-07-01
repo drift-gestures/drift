@@ -2,7 +2,9 @@ import SwiftUI
 
 /// Live testing console for raw snapshots, listener state transitions, and semantic backend events.
 struct LoggingView: View {
+    /// Store that provides backend, input, and listener diagnostics.
     @ObservedObject var activityLog: ActivityLogStore
+    /// Store that provides current HUD visibility information.
     @ObservedObject var hudStore: HUDStore
 
     var body: some View {
@@ -17,6 +19,7 @@ struct LoggingView: View {
         .onAppear { activityLog.record("Live Log window opened.", category: .system) }
     }
 
+    /// Header containing the title and clear action.
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
@@ -31,6 +34,7 @@ struct LoggingView: View {
         .padding()
     }
 
+    /// Summary panel for current backend, latest input, HUD count, and snapshot details.
     private var liveState: some View {
         VStack(alignment: .leading, spacing: 10) {
             LabeledContent("Input backend", value: activityLog.activeBackendName.rawValue)
@@ -52,6 +56,7 @@ struct LoggingView: View {
         .padding()
     }
 
+    /// Scrollable newest-first activity log.
     private var entryList: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -86,7 +91,9 @@ struct LoggingView: View {
     }
 }
 
+/// Row view for one activity log entry.
 private struct LogEntryRow: View {
+    /// Activity entry displayed by the row.
     let entry: ActivityLogStore.Entry
 
     var body: some View {
@@ -106,6 +113,7 @@ private struct LogEntryRow: View {
         .padding(.vertical, 8)
     }
 
+    /// Color associated with the entry category.
     private var categoryColor: Color {
         switch entry.category {
         case .system: .secondary

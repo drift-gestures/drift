@@ -1,31 +1,50 @@
 import Foundation
 
+/// A diagnostic snapshot of one listener after processing an interaction.
 struct ListenerActivity: Sendable {
+    /// The concrete listener type name shown in the live log.
     let listenerName: String
+    /// The listener state after it processed the interaction.
     let status: GestureStatus
 }
 
+/// The aggregate result produced after an interaction passes through the listener pipeline.
 struct ListenerPipelineResult: Sendable {
+    /// Semantic events emitted by the effective listener decisions.
     let events: [BackendEvent]
+    /// Foreground-app event suppressions requested by the effective listener decisions.
     let suppressions: Set<SuppressionRequest>
+    /// Listener state transitions recorded for diagnostics.
     let activities: [ListenerActivity]
+    /// Whether a listener currently owns the interaction exclusively.
     let didClaimInteraction: Bool
 }
 
-/// Calls listener structs synchronously in registration order.
+/// Calls listener structs synchronously in registration order and manages exclusive claims.
 final class ListenerPipeline {
+    /// Registered listeners in evaluation order.
     private var listeners: [any Listener]
+    /// The listener that currently owns the interaction, if any.
     private var claimedListenerIndex: Int?
+    /// Listeners cancelled by the current owner that still need reset frames.
     private var cancelledListenerIndices: Set<Int> = []
 
+    /// Creates a pipeline from an ordered listener list.
+    /// - Parameter listeners: Listeners to evaluate in registration order.
     init(listeners: [any Listener]) {
         self.listeners = listeners
     }
 
+    /// Processes a trackpad snapshot through the pipeline.
+    /// - Parameter snapshot: The snapshot to wrap as a trackpad interaction.
+    /// - Returns: The aggregate pipeline result.
     func process(_ snapshot: TrackpadSnapshot) -> ListenerPipelineResult {
         process(.trackpadSnapshot(snapshot))
     }
 
+    /// Processes one normalized interaction through the pipeline.
+    /// - Parameter interaction: The input interaction to evaluate.
+    /// - Returns: The effective events, suppressions, and listener activity.
     func process(_ interaction: Interaction) -> ListenerPipelineResult {
         if let claimedListenerIndex {
             return processClaimedInteraction(interaction, claimedIndex: claimedListenerIndex)
@@ -73,6 +92,11 @@ final class ListenerPipeline {
         )
     }
 
+    /// Sends an interaction only to the listener that currently owns it.
+    /// - Parameters:
+    ///   - interaction: The interaction to process.
+    ///   - claimedIndex: The index of the listener that owns the interaction.
+    /// - Returns: The result produced by the claimed listener, plus reset activity.
     private func processClaimedInteraction(
         _ interaction: Interaction,
         claimedIndex: Int
@@ -99,6 +123,11 @@ final class ListenerPipeline {
         )
     }
 
+    /// Cancels non-owning listeners that were already considering the same interaction.
+    /// - Parameters:
+    ///   - claimedIndex: The listener that owns the interaction.
+    ///   - snapshot: The trackpad snapshot used as cancellation context.
+    ///   - activities: Activity log entries to append cancellation transitions to.
     private func cancelOtherPossibleListeners(
         except claimedIndex: Int,
         with snapshot: TrackpadSnapshot?,
@@ -124,6 +153,9 @@ final class ListenerPipeline {
         }
     }
 
+    /// Builds a diagnostic activity value for one listener.
+    /// - Parameter index: The listener index to describe.
+    /// - Returns: The listener name and current status.
     private func activity(for index: Int) -> ListenerActivity {
         ListenerActivity(
             listenerName: String(describing: type(of: listeners[index])),
@@ -131,6 +163,7 @@ final class ListenerPipeline {
         )
     }
 
+    /// Clears the current interaction owner and any cancelled-listener reset bookkeeping.
     private func clearClaim() {
         claimedListenerIndex = nil
         cancelledListenerIndices.removeAll()
