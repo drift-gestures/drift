@@ -30,7 +30,7 @@ enum TimerHUDStyle {
     static let durationOffsetStep: CGFloat = (35 + 20) / 5
 
     static let windowHeight: CGFloat = 350
-    static let timerTickWidth: CGFloat = 180
+    static let timerTickWidth: CGFloat = 160
     static let timerButtonWidth: CGFloat = 140
     static let timerGridGap: CGFloat = 14
     static let controlHeight: CGFloat = 58
@@ -56,15 +56,13 @@ struct TimerHUDView: View {
 
     var body: some View {
         HStack {
-            HStack {
+            HStack(spacing: 8) {
                 TimerHUDNumberColumn(
                     duration: duration,
                 )
-                Spacer()
                 TimerHUDTickColumn(
                     duration: duration,
                 )
-                Spacer()
                 TimerHUDIndicator()
             }
             .padding([.leading, .trailing], 20)
@@ -137,7 +135,7 @@ private struct TimerHUDControlColumn: View {
                     .font(.system(size: 22, weight: .semibold))
 
                 Text(formattedDuration)
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.system(size: 22, weight: .medium))
                     .monospacedDigit()
                     .transaction { transaction in
                             transaction.animation = nil
@@ -151,7 +149,7 @@ private struct TimerHUDControlColumn: View {
 
             Button(action: {}) {
                 Text("Start")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(Color.tick)
                     .frame(width: TimerHUDStyle.timerButtonWidth, height: TimerHUDStyle.startButtonHeight)
                     .background(Color.timerStartbg)
@@ -183,6 +181,7 @@ private struct TimerHUDNumberColumn: View {
             }
         }
         .drawingGroup()
+        .padding([.trailing], 3)
         .padding([.top], TimerHUDStyle.windowHeight / 2 - 10)
         .padding([.bottom], 20)
         .offset(y: durationOffset)
@@ -208,11 +207,10 @@ private struct TimerHUDTickColumn: View {
             }
         }
         .offset(y: durationOffset)
-        .padding([.leading], 10)
         .padding([.top], TimerHUDStyle.windowHeight / 2 - 1.5)
         .padding([.bottom], 20)
         .frame(
-            width: TimerHUDStyle.timerTickWidth * 0.4,
+            width: TimerHUDStyle.timerTickWidth * 0.35,
             height: TimerHUDStyle.windowHeight,
             alignment: .topLeading
         )
@@ -230,7 +228,7 @@ private struct TimerHUDIndicator: View {
             Text("􀄦")
                 .foregroundStyle(Color.tick)
         }
-        .frame(width: TimerHUDStyle.timerTickWidth / 7)
+        .frame(width: TimerHUDStyle.timerTickWidth / 9)
     }
 }
 
