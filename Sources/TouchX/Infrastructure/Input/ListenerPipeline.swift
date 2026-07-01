@@ -23,8 +23,12 @@ final class ListenerPipeline {
     }
 
     func process(_ snapshot: TrackpadSnapshot) -> ListenerPipelineResult {
+        process(.trackpadSnapshot(snapshot))
+    }
+
+    func process(_ interaction: Interaction) -> ListenerPipelineResult {
         if let claimedListenerIndex {
-            return processClaimedInteraction(snapshot, claimedIndex: claimedListenerIndex)
+            return processClaimedInteraction(interaction, claimedIndex: claimedListenerIndex)
         }
 
         var events: [BackendEvent] = []
@@ -33,7 +37,7 @@ final class ListenerPipeline {
         var didClaim = false
 
         for index in listeners.indices {
-            let decision = listeners[index].onStateChange(snapshot)
+            let decision = listeners[index].onInteraction(interaction)
             events.append(contentsOf: decision.emittedEvents)
             suppressions.formUnion(decision.suppressions)
             activities.append(activity(for: index))
@@ -44,7 +48,11 @@ final class ListenerPipeline {
                 // Once this listener claims the interaction, only its decision remains effective.
                 events = decision.emittedEvents
                 suppressions = decision.suppressions
-                cancelOtherPossibleListeners(except: index, with: snapshot, activities: &activities)
+                cancelOtherPossibleListeners(
+                    except: index,
+                    with: interaction.trackpadSnapshot,
+                    activities: &activities
+                )
                 break
             }
             if decision.stopPropagation {
@@ -52,7 +60,7 @@ final class ListenerPipeline {
             }
         }
 
-        if snapshot.phase == .ended {
+        if interaction.endsCurrentClaim {
             clearClaim()
             didClaim = false
         }
@@ -66,20 +74,20 @@ final class ListenerPipeline {
     }
 
     private func processClaimedInteraction(
-        _ snapshot: TrackpadSnapshot,
+        _ interaction: Interaction,
         claimedIndex: Int
     ) -> ListenerPipelineResult {
-        let decision = listeners[claimedIndex].onStateChange(snapshot)
+        let decision = listeners[claimedIndex].onInteraction(interaction)
         var activities = [activity(for: claimedIndex)]
 
         // Cancelled listeners still receive snapshots so their own state machines can decide when
         // they are allowed to return to `.waiting`. Their decisions are intentionally ignored.
         for index in cancelledListenerIndices.sorted() {
-            _ = listeners[index].onStateChange(snapshot)
+            _ = listeners[index].onInteraction(interaction)
             activities.append(activity(for: index))
         }
 
-        if snapshot.phase == .ended {
+        if interaction.endsCurrentClaim {
             clearClaim()
         }
 
@@ -87,15 +95,17 @@ final class ListenerPipeline {
             events: decision.emittedEvents,
             suppressions: decision.suppressions,
             activities: activities,
-            didClaimInteraction: snapshot.phase != .ended
+            didClaimInteraction: !interaction.endsCurrentClaim
         )
     }
 
     private func cancelOtherPossibleListeners(
         except claimedIndex: Int,
-        with snapshot: TrackpadSnapshot,
+        with snapshot: TrackpadSnapshot?,
         activities: inout [ListenerActivity]
     ) {
+        guard let snapshot else { return }
+
         for index in listeners.indices where index != claimedIndex {
             switch listeners[index].gestureStatus {
             case .possible, .progressing:

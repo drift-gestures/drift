@@ -2,13 +2,23 @@ import AppKit
 import CoreGraphics
 import SwiftUI
 
-private enum TimerHUDStyle {
+extension Color {
     static let tick = Color(
         red: 1.0,
         green: 138.0 / 255,
         blue: 40.0 / 255
     )
+
     static let tickFaded = tick.opacity(0.5)
+
+    static let timerStartbg = Color(
+        red: 79 / 255,
+        green: 45 / 255,
+        blue: 20 / 255
+    )
+}
+
+enum TimerHUDStyle {
 
     static let numberCount = 20
     static let numberStep = 5
@@ -18,6 +28,23 @@ private enum TimerHUDStyle {
     static let tickHeight: CGFloat = 3
     static let tickSpacing: CGFloat = (35 + 20 - 3 * 5) / 5
     static let durationOffsetStep: CGFloat = (35 + 20) / 5
+
+    static let windowHeight: CGFloat = 350
+    static let timerTickWidth: CGFloat = 180
+    static let timerButtonWidth: CGFloat = 140
+    static let timerGridGap: CGFloat = 14
+    static let controlHeight: CGFloat = 58
+    static let controlSpacing: CGFloat = 14
+    static let startButtonHeight: CGFloat = 46
+
+}
+
+struct NoButtonAnimationStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(1)
+            .animation(nil, value: configuration.isPressed)
+    }
 }
 
 struct TimerHUDView: View {
@@ -29,31 +56,36 @@ struct TimerHUDView: View {
 
     var body: some View {
         HStack {
-            TimerHUDNumberColumn(
-                duration: duration,
-                screenSize: screenSize
-            )
-            TimerHUDTickColumn(
-                duration: duration,
-                screenSize: screenSize
-            )
-            TimerHUDIndicator(screenSize: screenSize)
-        }
-        .frame(width: screenSize.width, height: screenSize.height)
-        .background(Color.black)
-        .overlay {
-            TimerHUDFadeOverlay(screenSize: screenSize)
-        }
-        .cornerRadius(40)
-        .scaleEffect(loaded ? 1 : 0.8)
-        .opacity(loaded ? 1 : 0)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.2)) {
-                loaded = true
+            HStack {
+                TimerHUDNumberColumn(
+                    duration: duration,
+                )
+                Spacer()
+                TimerHUDTickColumn(
+                    duration: duration,
+                )
+                Spacer()
+                TimerHUDIndicator()
             }
-        }
-        .onReceive(hudMessages.messages) { message in
-            receiveHUDMessage(message)
+            .padding([.leading, .trailing], 20)
+            .frame(width: TimerHUDStyle.timerTickWidth, height: TimerHUDStyle.windowHeight)
+            .background(Color.black)
+            .overlay {
+                TimerHUDFadeOverlay(screenSize: screenSize)
+            }
+            .cornerRadius(40)
+            .scaleEffect(loaded ? 1 : 0.8)
+            .opacity(loaded ? 1 : 0)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    loaded = true
+                }
+            }
+            .onReceive(hudMessages.messages) { message in
+                receiveHUDMessage(message)
+            }
+            TimerHUDControlColumn(duration: duration)
+                .frame(width: TimerHUDStyle.timerButtonWidth, height: TimerHUDStyle.windowHeight, alignment: .top)
         }
     }
 
@@ -95,25 +127,66 @@ struct TimerHUDView: View {
     }
 }
 
+private struct TimerHUDControlColumn: View {
+    let duration: Int
+
+    var body: some View {
+        VStack(spacing: TimerHUDStyle.controlSpacing) {
+            HStack(spacing: 7) {
+                Image(systemName: "timer")
+                    .font(.system(size: 22, weight: .semibold))
+
+                Text(formattedDuration)
+                    .font(.system(size: 24, weight: .medium))
+                    .monospacedDigit()
+                    .transaction { transaction in
+                            transaction.animation = nil
+                        }
+            }
+            .foregroundStyle(Color.tick)
+            .frame(maxWidth: .infinity)
+            .frame(height: TimerHUDStyle.controlHeight)
+            .background(Color.black)
+            .clipShape(Capsule())
+
+            Button(action: {}) {
+                Text("Start")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(Color.tick)
+                    .frame(width: TimerHUDStyle.timerButtonWidth, height: TimerHUDStyle.startButtonHeight)
+                    .background(Color.timerStartbg)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(NoButtonAnimationStyle())
+
+            Spacer(minLength: 0)
+        }.frame(width: TimerHUDStyle.timerButtonWidth)
+    }
+
+    private var formattedDuration: String {
+        String(format: "%02d:00", duration)
+    }
+}
+
 private struct TimerHUDNumberColumn: View {
     let duration: Int
-    let screenSize: CGSize
+
 
     var body: some View {
         VStack(alignment: .trailing, spacing: TimerHUDStyle.rowSpacing) {
             ForEach(Array(0..<TimerHUDStyle.numberCount), id: \.self) { index in
                 let value = index * TimerHUDStyle.numberStep
                 Text(String(value))
-                    .foregroundStyle(value <= duration ? TimerHUDStyle.tick : TimerHUDStyle.tickFaded)
+                    .foregroundStyle(value <= duration ? Color.tick : Color.tickFaded)
                     .font(.system(size: 20))
                     .frame(height: TimerHUDStyle.numberHeight)
             }
         }
         .drawingGroup()
-        .padding([.top], screenSize.height / 2 - 10)
+        .padding([.top], TimerHUDStyle.windowHeight / 2 - 10)
         .padding([.bottom], 20)
         .offset(y: durationOffset)
-        .frame(height: screenSize.height, alignment: .topTrailing)
+        .frame(height: TimerHUDStyle.windowHeight, alignment: .topTrailing)
     }
 
     private var durationOffset: CGFloat {
@@ -123,7 +196,6 @@ private struct TimerHUDNumberColumn: View {
 
 private struct TimerHUDTickColumn: View {
     let duration: Int
-    let screenSize: CGSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: TimerHUDStyle.tickSpacing) {
@@ -131,17 +203,17 @@ private struct TimerHUDTickColumn: View {
                 Rectangle()
                     .frame(height: TimerHUDStyle.tickHeight)
                     .frame(maxWidth: .infinity)
-                    .foregroundStyle(index <= duration ? TimerHUDStyle.tick : TimerHUDStyle.tickFaded)
+                    .foregroundStyle(index <= duration ? Color.tick : Color.tickFaded)
                     .cornerRadius(1)
             }
         }
         .offset(y: durationOffset)
         .padding([.leading], 10)
-        .padding([.top], screenSize.height / 2 - 1.5)
+        .padding([.top], TimerHUDStyle.windowHeight / 2 - 1.5)
         .padding([.bottom], 20)
         .frame(
-            width: screenSize.width * 0.4,
-            height: screenSize.height,
+            width: TimerHUDStyle.timerTickWidth * 0.4,
+            height: TimerHUDStyle.windowHeight,
             alignment: .topLeading
         )
     }
@@ -152,14 +224,13 @@ private struct TimerHUDTickColumn: View {
 }
 
 private struct TimerHUDIndicator: View {
-    let screenSize: CGSize
 
     var body: some View {
         VStack {
             Text("􀄦")
-                .foregroundStyle(TimerHUDStyle.tick)
+                .foregroundStyle(Color.tick)
         }
-        .frame(width: screenSize.width / 6)
+        .frame(width: TimerHUDStyle.timerTickWidth / 7)
     }
 }
 
@@ -170,10 +241,10 @@ private struct TimerHUDFadeOverlay: View {
         Rectangle()
             .fill(LinearGradient(
                 stops: [
-                    .init(color: Color(red: 0, green: 0, blue: 0), location: 0.01),
+                    .init(color: Color(red: 0, green: 0, blue: 0), location: 0.05),
                     .init(color: Color(red: 0, green: 0, blue: 0, opacity: 0), location: 0.5),
                     .init(color: Color(red: 0, green: 0, blue: 0, opacity: 0), location: 0.5),
-                    .init(color: Color(red: 0, green: 0, blue: 0), location: 0.99),
+                    .init(color: Color(red: 0, green: 0, blue: 0), location: 0.95),
                 ],
                 startPoint: .top,
                 endPoint: .bottom

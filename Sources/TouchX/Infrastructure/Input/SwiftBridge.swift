@@ -56,20 +56,43 @@ final class SwiftBridge: @unchecked Sendable {
         suppressionController.stop()
     }
 
-    private func receive(_ snapshot: TrackpadSnapshot) {
+    func receive(_ interaction: Interaction) {
         processingLock.lock()
-        let result = listeners.process(snapshot)
+        let result = listeners.process(interaction)
         suppressionController.update(result.suppressions)
         processingLock.unlock()
 
         Task { @MainActor in
-            activityLog.record(snapshot: snapshot)
+            record(interaction)
             activityLog.record(
                 activities: result.activities,
                 didClaimInteraction: result.didClaimInteraction
             )
-            snapshotReceiver(snapshot)
             result.events.forEach(eventReceiver)
+        }
+    }
+
+    private func receive(_ snapshot: TrackpadSnapshot) {
+        receive(.trackpadSnapshot(snapshot))
+    }
+
+    @MainActor
+    private func record(_ interaction: Interaction) {
+        switch interaction {
+        case .trackpadSnapshot(let snapshot):
+            activityLog.record(snapshot: snapshot)
+            snapshotReceiver(snapshot)
+        case .keyboardPress(let keyPress):
+            let characters = keyPress.characters ?? "unprintable"
+            activityLog.record(
+                "Key press \(characters) (\(keyPress.keyCode)).",
+                category: .input
+            )
+        case .clickOutside(let click):
+            activityLog.record(
+                "Clicked outside \(click.hudID.rawValue) HUD.",
+                category: .input
+            )
         }
     }
 }

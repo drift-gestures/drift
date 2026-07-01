@@ -6,7 +6,7 @@ struct TimerHUDDefinition: HudDefinition {
     static let hudID = HUDID(rawValue: "timer")
 
     let id = hudID
-    let size = CGSize(width: 180, height: 350)
+    let size = CGSize(width: TimerHUDStyle.timerTickWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerButtonWidth, height: TimerHUDStyle.windowHeight)
 
     func position(in context: HUDLayoutContext) -> CGPoint {
         CGPoint(

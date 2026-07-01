@@ -26,5 +26,6 @@ struct TimerHUDInput: Equatable, Sendable {
 
 enum BackendEvent: Sendable {
     case timerHUDActivationRequested
+    case timerHUDCloseRequested
     case timerHUDInput(TimerHUDInput)
 }

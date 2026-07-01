@@ -13,7 +13,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var hudPresenter = HUDWindowPresenter(
         hudStore: hudStore,
         hudMessages: hudMessages,
-        definitions: [AnyHUDDefinition(TimerHUDDefinition())]
+        definitions: [AnyHUDDefinition(TimerHUDDefinition())],
+        interactionReceiver: { [weak self] interaction in
+            self?.swiftBridge.receive(interaction)
+        }
     )
     private lazy var swiftBridge = SwiftBridge(
         activityLog: activityLog,
@@ -87,6 +90,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             hudStore.activate(TimerHUDDefinition.hudID)
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
             activityLog.record("Opened Timer HUD from the bottom-left swipe.", category: .action)
+            updateHUDMenuState()
+        case .timerHUDCloseRequested:
+            hudStore.deactivate(TimerHUDDefinition.hudID)
+            activityLog.record("Closed Timer HUD from an outside click.", category: .action)
             updateHUDMenuState()
         case .timerHUDInput(let input):
             hudMessages.send(.timerInput(input), to: TimerHUDDefinition.hudID)

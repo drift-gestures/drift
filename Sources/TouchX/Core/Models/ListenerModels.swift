@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 struct CancellationReason: Hashable, Sendable {
@@ -46,6 +47,48 @@ enum SuppressOtherAppEvents: Sendable {
     case pressEvents
 }
 
+enum KeyboardModifier: Hashable, Sendable {
+    case command
+    case control
+    case option
+    case shift
+    case capsLock
+    case function
+}
+
+struct KeyboardPressInteraction: Sendable {
+    let keyCode: UInt16
+    let characters: String?
+    let modifiers: Set<KeyboardModifier>
+}
+
+struct ClickOutsideInteraction: Sendable {
+    let hudID: HUDID
+    let screenLocation: CGPoint
+}
+
+enum Interaction: Sendable {
+    case trackpadSnapshot(TrackpadSnapshot)
+    case keyboardPress(KeyboardPressInteraction)
+    case clickOutside(ClickOutsideInteraction)
+
+    var trackpadSnapshot: TrackpadSnapshot? {
+        guard case .trackpadSnapshot(let snapshot) = self else { return nil }
+        return snapshot
+    }
+
+    var endsCurrentClaim: Bool {
+        switch self {
+        case .trackpadSnapshot(let snapshot):
+            snapshot.phase == .ended
+        case .clickOutside:
+            true
+        case .keyboardPress:
+            false
+        }
+    }
+}
+
 struct ListenerDecision: Sendable {
     let stopPropagation: Bool
     let claimInteraction: Bool
@@ -70,5 +113,11 @@ protocol Listener {
     // mark other possible listeners as cancelled when one listener claims the interaction.
     var gestureStatus: GestureStatus { get set }
 
-    mutating func onStateChange(_ snapshot: TrackpadSnapshot) -> ListenerDecision
+    mutating func onInteraction(_ interaction: Interaction) -> ListenerDecision
+}
+
+extension Listener {
+    mutating func onInteraction(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
+        onInteraction(.trackpadSnapshot(snapshot))
+    }
 }
