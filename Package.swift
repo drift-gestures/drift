@@ -3,24 +3,24 @@
 import PackageDescription
 
 let package = Package(
-    name: "TouchX",
+    name: "drift",
     platforms: [
         .macOS(.v13)
     ],
     products: [
-        .executable(name: "TouchX", targets: ["TouchX"])
+        .executable(name: "drift", targets: ["drift"])
     ],
     targets: [
         .target(
-            name: "TouchXMultitouch",
+            name: "driftMultitouch",
             publicHeadersPath: "include",
             linkerSettings: [
                 .linkedLibrary("dl")
             ]
         ),
         .executableTarget(
-            name: "TouchX",
-            dependencies: ["TouchXMultitouch"],
+            name: "drift",
+            dependencies: ["driftMultitouch"],
             swiftSettings: [
                 .unsafeFlags(["-Xfrontend", "-strict-concurrency=minimal"])
             ],
@@ -30,8 +30,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "TouchXTests",
-            dependencies: ["TouchX"]
+            name: "driftTests",
+            dependencies: ["drift"]
         )
     ]
 )

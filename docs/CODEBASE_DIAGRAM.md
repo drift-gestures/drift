@@ -1,4 +1,4 @@
-# TouchX codebase map
+# drift codebase map
 
 Solid arrows show active runtime flow. Dotted arrows show type/build dependencies or code that is available but currently unregistered.
 
@@ -12,15 +12,15 @@ flowchart LR
     end
 
     subgraph cLayer ["C trackpad boundary"]
-        cHeader["TouchXMultitouch.h: stable TXMTContact and TXMTTrackpadSnapshot C API"]
-        cListener["TouchXMultitouch.c: loads private symbols, receives TXMTFinger arrays, derives center scale rotation, emits snapshots"]
-        bridgingHeader["TouchX-Bridging-Header.h: exposes the C API to the native Xcode Swift target"]
+        cHeader["driftMultitouch.h: stable TXMTContact and TXMTTrackpadSnapshot C API"]
+        cListener["driftMultitouch.c: loads private symbols, receives TXMTFinger arrays, derives center scale rotation, emits snapshots"]
+        bridgingHeader["drift-Bridging-Header.h: exposes the C API to the native Xcode Swift target"]
     end
 
     subgraph appLayer ["Application composition"]
         appDelegate["AppDelegate.swift: owns stores and SwiftBridge, registers listeners as an empty ordered array, creates menu and log window"]
         infoPlist["Info.plist: native app identity and runtime metadata"]
-        packageFile["Package.swift and Xcode project: compile Swift app plus TouchXMultitouch C target"]
+        packageFile["Package.swift and Xcode project: compile Swift app plus driftMultitouch C target"]
     end
 
     subgraph coreModels ["Core models"]
@@ -57,7 +57,7 @@ flowchart LR
 
     subgraph verification ["Build and verification"]
         tests["ListenerArchitectureTests.swift: verifies registration order, stop propagation, claim cancellation, and cancelled-listener reset delivery"]
-        xcodeProject["TouchX.xcodeproj: native macOS app target and source membership"]
+        xcodeProject["drift.xcodeproj: native macOS app target and source membership"]
     end
 
     multitouchFramework -->|"Raw contact frame"| cListener

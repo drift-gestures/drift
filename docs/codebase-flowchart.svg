@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1780" viewBox="0 0 1800 1780" role="img" aria-labelledby="title desc">
-  <title id="title">TouchX codebase flowchart</title>
+  <title id="title">drift codebase flowchart</title>
   <desc id="desc">The active trackpad pipeline, listener decision flow, frontend state, and dormant Quick Actions files.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
@@ -46,7 +46,7 @@
   </defs>
 
   <rect width="1800" height="1780" fill="url(#bg)"/>
-  <text x="70" y="78" class="title">TouchX codebase flowchart</text>
+  <text x="70" y="78" class="title">drift codebase flowchart</text>
   <text x="70" y="112" class="subtitle">What runs today, how files communicate, and what remains compiled but disconnected</text>
   <rect x="1440" y="55" width="290" height="46" rx="23" fill="#102b22" stroke="#3d825f"/>
   <text x="1585" y="84" text-anchor="middle" class="badge">NO GESTURES REGISTERED</text>
@@ -66,7 +66,7 @@
   <rect x="480" y="255" width="350" height="210" rx="18" class="card blue"/>
   <text x="502" y="287" class="eyebrow blueText">C LISTENER</text>
   <text x="502" y="321" class="cardTitle">Reduce the raw frame</text>
-  <text x="502" y="348" class="file">TouchXMultitouch.c / .h</text>
+  <text x="502" y="348" class="file">driftMultitouch.c / .h</text>
   <text x="502" y="380" class="body"><tspan x="502">Copies stable contact fields and derives</tspan><tspan x="502" dy="22">center, scale, rotation, frame and phase.</tspan><tspan x="502" dy="22">Emits TXMTTrackpadSnapshot.</tspan></text>
 
   <path d="M830 360 H880" class="connector"/>

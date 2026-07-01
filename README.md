@@ -1,6 +1,6 @@
-# TouchX
+# drift
 
-TouchX is a macOS menu-bar utility for testing raw trackpad input.
+drift is a macOS menu-bar utility for testing raw trackpad input.
 
 ## What is built
 
@@ -18,7 +18,7 @@ TouchX is a macOS menu-bar utility for testing raw trackpad input.
 4. `EventSuppressionController` applies the exact axis and direction requested by listeners while preserving unsuppressed scroll components.
 5. `SwiftBridge` sends emitted semantic events to the frontend. `HUDStore` owns active-HUD and custom frontend state, while `HudDefinition` defines HUD content, size, and placement.
 
-Each future listener belongs in `Sources/TouchX/Infrastructure/Input/Listeners` and is explicitly registered in order. The folder is intentionally empty right now.
+Each future listener belongs in `Sources/drift/Infrastructure/Input/Listeners` and is explicitly registered in order. The folder is intentionally empty right now.
 
 Implementation notes live beside the types and behavior they describe as code comments.
 
@@ -27,10 +27,10 @@ Implementation notes live beside the types and behavior they describe as code co
 Open the native application project:
 
 ```sh
-open TouchX.xcodeproj
+open drift.xcodeproj
 ```
 
-In Xcode, select the `TouchX` scheme and `My Mac`, then press Play. Open the `.xcodeproj` directly, not `Package.swift` or `.swiftpm/xcode/package.xcworkspace`. The package workspace launches a bare executable and cannot provide the macOS app bundle required by the menu-bar app.
+In Xcode, select the `drift` scheme and `My Mac`, then press Play. Open the `.xcodeproj` directly, not `Package.swift` or `.swiftpm/xcode/package.xcworkspace`. The package workspace launches a bare executable and cannot provide the macOS app bundle required by the menu-bar app.
 
 ## Command-line build
 
@@ -51,20 +51,20 @@ Scripts/create-app-bundle.sh
 The app bundle will be created at:
 
 ```text
-build/TouchX.app
+build/drift.app
 ```
 
 ## First self-test
 
-1. Open `build/TouchX.app`.
-2. If suppression is unavailable, open System Settings and grant TouchX permissions under Privacy & Security:
+1. Open `build/drift.app`.
+2. If suppression is unavailable, open System Settings and grant drift permissions under Privacy & Security:
    - Accessibility
    - Input Monitoring, if macOS shows it
-3. TouchX opens its Live Log window. Touch or move fingers on the trackpad.
+3. drift opens its Live Log window. Touch or move fingers on the trackpad.
 4. Confirm the window reports raw frames, contacts, center, scale, and rotation.
 
 ## Current v1 limitations
 
 - The private multitouch bridge is intentionally isolated and experimental.
 - No gestures or HUDs are registered by default.
-- The Live Log is intentionally in-memory and clears when TouchX quits.
+- The Live Log is intentionally in-memory and clears when drift quits.

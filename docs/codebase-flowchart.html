@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TouchX codebase flowchart</title>
+  <title>drift codebase flowchart</title>
   <style>
     :root {
       color-scheme: dark;
@@ -200,7 +200,7 @@
 <main>
   <header>
     <div>
-      <h1>TouchX codebase flowchart</h1>
+      <h1>drift codebase flowchart</h1>
       <p class="subtitle">A source-backed view of what runs today, how listener decisions move through the backend, and which older Quick Actions files are currently disconnected.</p>
     </div>
     <div class="status">No gesture listeners registered</div>
@@ -221,7 +221,7 @@
       <article class="card c">
         <span class="eyebrow">C listener</span>
         <h3>Reduce the raw frame</h3>
-        <div class="file">TouchXMultitouch.c / .h</div>
+        <div class="file">driftMultitouch.c / .h</div>
         <ul><li>Copies stable contact fields</li><li>Derives center, scale, rotation</li><li>Emits TXMTTrackpadSnapshot</li></ul>
       </article>
       <div class="arrow">→</div>
@@ -317,7 +317,7 @@
           <div class="file-pill">App/main.swift</div>
           <div class="file-pill">App/AppDelegate.swift</div>
           <div class="file-pill">Config/Info.plist</div>
-          <div class="file-pill">Config/TouchX-Bridging-Header.h</div>
+          <div class="file-pill">Config/drift-Bridging-Header.h</div>
         </div>
       </div>
       <div class="file-group">

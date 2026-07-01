@@ -1,6 +1,6 @@
 # Codex Project Notes
 
-These notes capture the current TouchX coding preferences from the Timer HUD rewrite.
+These notes capture the current drift coding preferences from the Timer HUD rewrite.
 
 ## Gesture Lifecycle
 
@@ -31,6 +31,6 @@ These notes capture the current TouchX coding preferences from the Timer HUD rew
 
 ## When Editing This Area
 
-- Preserve the architecture from `TouchX architecture.pdf`: possible -> progressing/cancelled -> ended/waiting.
+- Preserve the architecture from `drift architecture.pdf`: possible -> progressing/cancelled -> ended/waiting.
 - Prefer simple guards and direct state transitions over extra inferred state.
 - Avoid mixing UI state, gesture recognition, and event emission in one branch.

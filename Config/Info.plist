@@ -22,5 +22,7 @@
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>drift listens for Escape while a HUD is visible so it can close the HUD without requiring the Live Log window to be focused.</string>
 </dict>
 </plist>
