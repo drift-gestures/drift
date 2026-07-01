@@ -2,11 +2,17 @@ import SwiftUI
 
 /// Chooses the visible Quick Actions section and renders the swipe-progress indicator over it.
 struct QuickActionSurface: View {
+    /// Clipboard history source used by the clipboard section.
     @ObservedObject var clipboardHistory: ClipboardHistoryStore
+    /// Section currently selected by gesture progress.
     let section: QuickActionSection
+    /// Continuous section-selection progress.
     let progress: Double
+    /// Horizontal flow direction for section content.
     let horizontalFlow: MasonryHorizontalFlow
+    /// Vertical flow direction for section content.
     let verticalFlow: MasonryVerticalFlow
+    /// Total number of sections used to normalize the progress ring.
     let numberOfSections: Int
 
     var body: some View {
@@ -21,6 +27,7 @@ struct QuickActionSurface: View {
         }
     }
 
+    /// Section-specific content that follows the current overlay flow direction.
     @ViewBuilder
     private var content: some View {
         // Both sections receive the same flow information so they follow the cursor-side placement.
@@ -40,12 +47,14 @@ struct QuickActionSurface: View {
         }
     }
 
+    /// Padding that reserves room for the progress orb at the active vertical edge.
     private var contentPadding: EdgeInsets {
         let topInset: CGFloat = verticalFlow == .topToBottom ? 65 : 0
         let bottomInset: CGFloat = verticalFlow == .bottomToTop ? 65 : 0
         return EdgeInsets(top: topInset, leading: 0, bottom: bottomInset, trailing: 0)
     }
 
+    /// Corner alignment for the section progress orb.
     private var orbAlignment: Alignment {
         switch (horizontalFlow, verticalFlow) {
         case (.leftToRight, .topToBottom): return .topLeading
@@ -56,9 +65,13 @@ struct QuickActionSurface: View {
     }
 }
 
+/// Circular section indicator that shows current swipe progress.
 private struct SectionProgressOrb: View {
+    /// Section represented by the orb icon and accessibility label.
     let section: QuickActionSection
+    /// Continuous progress across all sections.
     let progress: Double
+    /// Number of sections used to map global progress into one ring cycle.
     let numberOfSections: Int
     
     var body: some View {

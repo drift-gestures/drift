@@ -5,15 +5,22 @@ import driftMultitouch
 
 /// Copies the C-produced `TXMTTrackpadSnapshot` into Swift-owned values.
 final class CTrackpadBridge {
+    /// Human-readable startup status shown in the live log.
     private(set) var statusMessage = "Not started"
+    /// Closure invoked whenever the C bridge provides a converted Swift snapshot.
     private var snapshotHandler: ((TrackpadSnapshot) -> Void)?
 
+    /// The active bridge instance used by the C callback trampoline.
     nonisolated(unsafe) private static weak var current: CTrackpadBridge?
 
+    /// Registers this bridge instance as the callback target.
     init() {
         Self.current = self
     }
 
+    /// Loads the private multitouch bridge and starts receiving snapshots.
+    /// - Parameter snapshotHandler: Closure called with Swift-owned snapshots.
+    /// - Returns: `true` when the private bridge loaded and started successfully.
     func start(snapshotHandler: @escaping (TrackpadSnapshot) -> Void) -> Bool {
         let status = TXMTLoad()
         guard status.available else {
@@ -31,11 +38,14 @@ final class CTrackpadBridge {
         return didStart
     }
 
+    /// Stops the private bridge and releases the current snapshot handler.
     func stop() {
         TXMTStop()
         snapshotHandler = nil
     }
 
+    /// Converts a C snapshot pointer into Swift model values and dispatches it to the handler.
+    /// - Parameter pointer: The pointer supplied by the C bridge callback.
     private static func dispatch(_ pointer: UnsafePointer<TXMTTrackpadSnapshot>?) {
         guard let backend = current, let pointer else { return }
         let source = pointer.pointee
