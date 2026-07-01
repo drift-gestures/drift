@@ -87,42 +87,12 @@ final class ListenerArchitectureTests: XCTestCase {
         }
     }
 
-    func testInvertedYAxisBottomLeftSwipeCanActivateTimerHUD() {
-        var listener = TimerHUDInputListener()
-
-        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.9), frame: 1))
-        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.69), frame: 2))
-
-        XCTAssertTrue(result.claimInteraction)
-        XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDActivationRequested = result.emittedEvents.first else {
-            return XCTFail("Expected timer HUD activation request.")
-        }
-    }
-
     func testUpSwipeAfterActivationEmitsTimerDurationInput() {
         var listener = TimerHUDInputListener()
 
         _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
         _ = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 2))
         let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.35), frame: 3))
-
-        XCTAssertTrue(result.claimInteraction)
-        XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .vertical)]))
-        XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDInput(let input) = result.emittedEvents.first else {
-            return XCTFail("Expected timer duration input.")
-        }
-        XCTAssertEqual(input.kind, .scrollUp)
-        XCTAssertEqual(input.frame, 3)
-    }
-
-    func testInvertedYAxisSwipeAfterActivationEmitsTimerDurationInput() {
-        var listener = TimerHUDInputListener()
-
-        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.9), frame: 1))
-        _ = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.69), frame: 2))
-        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.65), frame: 3))
 
         XCTAssertTrue(result.claimInteraction)
         XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .vertical)]))
@@ -195,6 +165,27 @@ final class ListenerArchitectureTests: XCTestCase {
         }
         XCTAssertEqual(input.kind, .scrollRight)
         XCTAssertEqual(input.frame, 3)
+    }
+
+    func testVisibleTimerHUDStartsInputWithoutActivationSwipe() {
+        let visibilityState = HUDVisibilityState()
+        visibilityState.setActiveHUDs([TimerHUDDefinition.hudID])
+        var listener = TimerHUDInputListener(hudVisibilityState: visibilityState)
+
+        let started = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.5), frame: 1))
+        let inputResult = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.54, y: 0.5), frame: 2))
+
+        XCTAssertTrue(started.claimInteraction)
+        XCTAssertEqual(started.suppressions, suppressingEscape([.scroll(axis: .vertical), .scroll(axis: .horizontal)]))
+        XCTAssertTrue(started.emittedEvents.isEmpty)
+        XCTAssertTrue(inputResult.claimInteraction)
+        XCTAssertEqual(inputResult.suppressions, suppressingEscape([.scroll(axis: .horizontal)]))
+        XCTAssertEqual(inputResult.emittedEvents.count, 1)
+        guard case .timerHUDInput(let input) = inputResult.emittedEvents.first else {
+            return XCTFail("Expected visible Timer HUD to receive gesture input.")
+        }
+        XCTAssertEqual(input.kind, .scrollRight)
+        XCTAssertEqual(input.frame, 2)
     }
 
     func testReleasingActivationGestureKeepsTimerHUDListening() {
@@ -274,6 +265,26 @@ final class ListenerArchitectureTests: XCTestCase {
 
         _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.5), frame: 1))
         let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.5, y: 0.8), frame: 2))
+
+        XCTAssertFalse(result.claimInteraction)
+        XCTAssertTrue(result.emittedEvents.isEmpty)
+    }
+
+    func testDownSwipeFromTopLeftDoesNotActivateTimerHUD() {
+        var listener = TimerHUDInputListener()
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.9), frame: 1))
+        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.69), frame: 2))
+
+        XCTAssertFalse(result.claimInteraction)
+        XCTAssertTrue(result.emittedEvents.isEmpty)
+    }
+
+    func testDownSwipeFromTopRightDoesNotActivateTimerHUD() {
+        var listener = TimerHUDInputListener()
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.9, y: 0.9), frame: 1))
+        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.9, y: 0.69), frame: 2))
 
         XCTAssertFalse(result.claimInteraction)
         XCTAssertTrue(result.emittedEvents.isEmpty)

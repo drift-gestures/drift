@@ -13,15 +13,13 @@ struct TimerHUDInputListener: Listener {
     private var pendingCenter: CGPoint?
     /// Last scale value used to classify pinch input.
     private var pendingScale = 1.0
-    /// Multiplier that normalizes upward movement for normal and inverted trackpad Y axes.
-    private var pendingUpDirectionY: CGFloat = 1
 
     /// Minimum normalized movement needed to activate the Timer HUD.
     private let activationThreshold: CGFloat = 0.1
-    /// Maximum normalized X position that still counts as the left activation edge.
-    private let bottomLeftEdgeLimit: CGFloat = 0.1
-    /// Distance from either vertical edge that counts as a bottom-left activation corner.
-    private let bottomEdgeLimit: CGFloat = 0.15
+    /// Maximum normalized X coordinate for activation start.
+    private let activationStartMaxX: CGFloat = 0.1
+    /// Maximum normalized Y coordinate for activation start.
+    private let activationStartMaxY: CGFloat = 0.15
     /// Minimum center movement needed to emit a scroll-style Timer HUD input.
     private let scrollThreshold = 0.01
     /// Minimum scale delta needed to emit a pinch-style Timer HUD input.
@@ -53,6 +51,9 @@ struct TimerHUDInputListener: Listener {
     private mutating func onTrackpadSnapshot(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
         switch gestureStatus {
         case .waiting:
+            if isTimerHUDActive {
+                return startTimerInput(for: snapshot)
+            }
             return checkForTimerActivationStart(snapshot)
         case .possible:
             if snapshot.phase == .ended {
@@ -70,6 +71,23 @@ struct TimerHUDInputListener: Listener {
             }
             return ListenerDecision()
         }
+    }
+
+    /// Starts HUD input handling when the Timer HUD is already visible.
+    /// - Parameter snapshot: The first frame to use as the input baseline.
+    /// - Returns: A claimed decision that suppresses foreground scroll while collecting deltas.
+    private mutating func startTimerInput(for snapshot: TrackpadSnapshot) -> ListenerDecision {
+        guard snapshot.fingerCount == 2, snapshot.phase != .ended else {
+            return ListenerDecision()
+        }
+
+        pendingCenter = snapshot.center
+        pendingScale = snapshot.scale
+        gestureStatus = .progressing(snapshot)
+        return ListenerDecision(
+            claimInteraction: true,
+            suppressions: activeSuppressions
+        )
     }
 
     /// Handles Escape-key behavior for closing or cancelling Timer HUD gestures.
@@ -126,13 +144,12 @@ struct TimerHUDInputListener: Listener {
     /// - Returns: A neutral decision after recording `.possible`, or no-op if the snapshot is not eligible.
     private mutating func checkForTimerActivationStart(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
         guard snapshot.fingerCount == 2,
-              let upDirectionY = upDirectionY(for: snapshot.center)
+              isStartingFromBottomLeft(snapshot.center)
         else {
             return ListenerDecision()
         }
         pendingCenter = snapshot.center
         pendingScale = snapshot.scale
-        pendingUpDirectionY = upDirectionY
         gestureStatus = .possible(snapshot)
         return ListenerDecision()
     }
@@ -150,13 +167,12 @@ struct TimerHUDInputListener: Listener {
 
         let deltaX = snapshot.center.x - pendingCenter.x
         let deltaY = snapshot.center.y - pendingCenter.y
-        let upwardDelta = pendingUpDirectionY * deltaY
-        let dominantMovement = max(abs(deltaX), abs(upwardDelta))
+        let dominantMovement = max(abs(deltaX), abs(deltaY))
         guard dominantMovement >= activationThreshold else {
             gestureStatus = .possible(snapshot)
             return ListenerDecision(suppressions: activeSuppressions)
         }
-        guard upwardDelta >= activationThreshold, upwardDelta >= abs(deltaX) else {
+        guard deltaY >= activationThreshold, deltaY >= abs(deltaX) else {
             return cancelGesture(with: snapshot)
         }
 
@@ -187,7 +203,6 @@ struct TimerHUDInputListener: Listener {
         guard let input = classifyInput(
             from: pendingCenter!,
             pendingScale: pendingScale,
-            upDirectionY: pendingUpDirectionY,
             to: snapshot
         ) else {
             gestureStatus = .progressing(snapshot)
@@ -238,14 +253,11 @@ struct TimerHUDInputListener: Listener {
         hudVisibilityState?.isActive(TimerHUDDefinition.hudID) ?? false
     }
 
-    /// Determines the normalized upward direction for a bottom-left activation start.
+    /// Checks whether the contact center is inside the bottom-left activation region.
     /// - Parameter center: The normalized contact center.
-    /// - Returns: `1` or `-1` for valid activation corners, otherwise `nil`.
-    private func upDirectionY(for center: CGPoint) -> CGFloat? {
-        guard center.x <= bottomLeftEdgeLimit else { return nil }
-        if center.y <= bottomEdgeLimit { return 1 }
-        if center.y >= 1 - bottomEdgeLimit { return -1 }
-        return nil
+    /// - Returns: `true` when the contact is at the bottom-left edge.
+    private func isStartingFromBottomLeft(_ center: CGPoint) -> Bool {
+        center.x <= activationStartMaxX && center.y <= activationStartMaxY
     }
 
     /// Cancels the current activation gesture and clears tracked baseline values.
@@ -267,25 +279,21 @@ struct TimerHUDInputListener: Listener {
     private mutating func clearTracking() {
         pendingCenter = nil
         pendingScale = 1.0
-        pendingUpDirectionY = 1
     }
 
     /// Classifies movement since the previous baseline into a Timer HUD input.
     /// - Parameters:
     ///   - center: Previous normalized contact center.
     ///   - pendingScale: Previous aggregate scale value.
-    ///   - upDirectionY: Multiplier that normalizes upward motion.
     ///   - snapshot: Current trackpad snapshot to classify.
     /// - Returns: A Timer HUD input when movement exceeds a threshold.
     private func classifyInput(
         from center: CGPoint,
         pendingScale: Double,
-        upDirectionY: CGFloat,
         to snapshot: TrackpadSnapshot
     ) -> TimerHUDInput? {
         let deltaX = snapshot.center.x - center.x
         let deltaY = snapshot.center.y - center.y
-        let upwardDelta = upDirectionY * deltaY
         let scaleDelta = snapshot.scale - pendingScale
 
         if abs(scaleDelta) >= pinchThreshold {
@@ -297,13 +305,13 @@ struct TimerHUDInputListener: Listener {
         }
 
         let horizontalMagnitude = abs(deltaX)
-        let verticalMagnitude = abs(upwardDelta)
+        let verticalMagnitude = abs(deltaY)
         guard max(horizontalMagnitude, verticalMagnitude) >= scrollThreshold else { return nil }
 
         let kind: TimerHUDInput.Kind
         let magnitude: Double
         if verticalMagnitude >= horizontalMagnitude {
-            kind = upwardDelta >= 0 ? .scrollUp : .scrollDown
+            kind = deltaY >= 0 ? .scrollUp : .scrollDown
             magnitude = verticalMagnitude
         } else {
             kind = deltaX >= 0 ? .scrollRight : .scrollLeft
