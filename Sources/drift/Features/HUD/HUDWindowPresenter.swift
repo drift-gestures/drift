@@ -13,8 +13,8 @@ final class HUDWindowPresenter {
     private let definitions: [HUDID: AnyHUDDefinition]
     /// Receiver used to send HUD-originated interactions back into the input pipeline.
     private let interactionReceiver: @MainActor (Interaction) -> Void
-    /// Currently displayed HUD panels keyed by identifier.
-    private var windows: [HUDID: NSPanel] = [:]
+    /// Currently displayed HUD panel and its identifier.
+    private var activeWindow: (id: HUDID, panel: NSPanel)?
     /// Subscription to HUD visibility changes.
     private var cancellable: AnyCancellable?
     /// Local mouse monitor used to detect clicks outside HUD windows while drift is active.
@@ -47,28 +47,38 @@ final class HUDWindowPresenter {
     /// Starts observing HUD visibility and synchronizes the initial window set.
     func start() {
         guard cancellable == nil else { return }
-        cancellable = hudStore.$activeHUDs.sink { [weak self] activeHUDs in
-            self?.syncWindows(activeHUDs: activeHUDs)
+        cancellable = hudStore.$activeHUDID.sink { [weak self] activeHUDID in
+            self?.syncWindow(activeHUDID: activeHUDID)
         }
-        syncWindows(activeHUDs: hudStore.activeHUDs)
+        syncWindow(activeHUDID: hudStore.activeHUDID)
     }
 
-    /// Creates missing windows, closes inactive windows, and updates event monitors.
-    /// - Parameter activeHUDs: The HUD identifiers that should currently be visible.
-    private func syncWindows(activeHUDs: Set<HUDID>) {
-        for id in activeHUDs where windows[id] == nil {
-            guard let definition = definitions[id] else { continue }
+    /// Creates, replaces, or closes the active HUD window, then updates event monitors.
+    /// - Parameter activeHUDID: The HUD identifier that should currently be visible.
+    private func syncWindow(activeHUDID: HUDID?) {
+        if let activeWindow, activeWindow.id != activeHUDID {
+            closeActiveWindow()
+        }
+
+        if activeWindow == nil,
+           let activeHUDID,
+           let definition = definitions[activeHUDID] {
             let window = makeWindow(for: definition)
-            windows[id] = window
+            activeWindow = (id: activeHUDID, panel: window)
             window.orderFrontRegardless()
         }
 
-        for id in Array(windows.keys) where !activeHUDs.contains(id) {
-            windows[id]?.close()
-            windows[id] = nil
-        }
-
         updateInteractionMonitoring()
+    }
+
+    /// Fully tears down the active HUD panel and its hosted SwiftUI view tree.
+    private func closeActiveWindow() {
+        guard let window = activeWindow?.panel else { return }
+
+        activeWindow = nil
+        window.orderOut(nil)
+        window.contentView = nil
+        window.close()
     }
 
     /// Builds an AppKit panel for one HUD definition.
@@ -117,7 +127,7 @@ final class HUDWindowPresenter {
 
     /// Starts or stops interaction monitoring based on whether any HUD windows are visible.
     private func updateInteractionMonitoring() {
-        if windows.isEmpty {
+        if activeWindow == nil {
             stopInteractionMonitoring()
         } else {
             startInteractionMonitoringIfNeeded()
@@ -190,14 +200,17 @@ final class HUDWindowPresenter {
         }
     }
 
-    /// Sends click-outside interactions for every visible HUD whose frame does not contain the click.
+    /// Sends a click-outside interaction when the click is outside the active HUD.
     /// - Parameter location: The click location in screen coordinates.
     private func handleMouseDown(at location: CGPoint) {
-        for (id, window) in windows where !window.frame.contains(location) {
-            interactionReceiver(
-                .clickOutside(ClickOutsideInteraction(hudID: id, screenLocation: location))
-            )
+        guard let activeWindow,
+              !activeWindow.panel.frame.contains(location)
+        else {
+            return
         }
+        interactionReceiver(
+            .clickOutside(ClickOutsideInteraction(hudID: activeWindow.id, screenLocation: location))
+        )
     }
 }
 

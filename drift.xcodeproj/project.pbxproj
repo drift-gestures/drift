@@ -28,7 +28,9 @@
 		100000000000000000000026 /* ListenerPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000026 /* ListenerPipeline.swift */; };
 		100000000000000000000027 /* HUDStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000027 /* HUDStore.swift */; };
 		100000000000000000000028 /* HUDWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000028 /* HUDWindowPresenter.swift */; };
+		100000000000000000000029 /* HUDTestingSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000029 /* HUDTestingSupport.swift */; };
 		10000000000000000000002A /* TimerHUDInputListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002A /* TimerHUDInputListener.swift */; };
+		10000000000000000000002B /* HUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002B /* HUDController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,7 +59,9 @@
 		200000000000000000000026 /* ListenerPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenerPipeline.swift; sourceTree = "<group>"; };
 		200000000000000000000027 /* HUDStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDStore.swift; sourceTree = "<group>"; };
 		200000000000000000000028 /* HUDWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDWindowPresenter.swift; sourceTree = "<group>"; };
+		200000000000000000000029 /* HUDTestingSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDTestingSupport.swift; sourceTree = "<group>"; };
 		20000000000000000000002A /* TimerHUDInputListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerHUDInputListener.swift; sourceTree = "<group>"; };
+		20000000000000000000002B /* HUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDController.swift; sourceTree = "<group>"; };
 		AE84834E2FE19DCA00446B38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -268,7 +272,9 @@
 		400000000000000000000015 /* HUD */ = {
 			isa = PBXGroup;
 			children = (
+				20000000000000000000002B /* HUDController.swift */,
 				200000000000000000000027 /* HUDStore.swift */,
+				200000000000000000000029 /* HUDTestingSupport.swift */,
 				200000000000000000000028 /* HUDWindowPresenter.swift */,
 				AE1483D42FF2F177008D484B /* Timer */,
 			);
@@ -374,7 +380,9 @@
 				100000000000000000000026 /* ListenerPipeline.swift in Sources */,
 				100000000000000000000027 /* HUDStore.swift in Sources */,
 				100000000000000000000028 /* HUDWindowPresenter.swift in Sources */,
+				100000000000000000000029 /* HUDTestingSupport.swift in Sources */,
 				10000000000000000000002A /* TimerHUDInputListener.swift in Sources */,
+				10000000000000000000002B /* HUDController.swift in Sources */,
 				100000000000000000000009 /* driftMultitouch.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -389,6 +397,8 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_DOCC_FLAGS = "";
+				OTHER_SWIFT_FLAGS = "-symbol-graph-minimum-access-level internal";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
 			};
@@ -401,6 +411,8 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_DOCC_FLAGS = "";
+				OTHER_SWIFT_FLAGS = "-symbol-graph-minimum-access-level internal";
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_VERSION = 6.0;

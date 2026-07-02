@@ -36,12 +36,20 @@ struct TimerHUDInput: Equatable, Sendable {
     let frame: Int
 }
 
-/// Semantic events emitted by listeners and consumed by app-level UI code.
+/// Reason a listener-owned Timer HUD session closed.
+enum TimerHUDCloseReason: Sendable {
+    /// The user clicked outside the Timer HUD window.
+    case clickOutside
+    /// The user pressed Escape while the Timer HUD was active.
+    case escape
+}
+
+/// Observational events emitted after listeners have already applied their effects.
 enum BackendEvent: Sendable {
-    /// Requests that the Timer HUD be shown.
-    case timerHUDActivationRequested
-    /// Requests that the Timer HUD be hidden.
-    case timerHUDCloseRequested
-    /// Sends a gesture-derived input to the active Timer HUD.
-    case timerHUDInput(TimerHUDInput)
+    /// The Timer HUD was opened by the listener-owned HUD controller.
+    case timerHUDDidOpen(source: HUDSessionSource)
+    /// The Timer HUD was closed by the listener-owned HUD controller.
+    case timerHUDDidClose(reason: TimerHUDCloseReason)
+    /// A gesture-derived input was accepted for the active Timer HUD.
+    case timerHUDDidReceiveInput(TimerHUDInput)
 }

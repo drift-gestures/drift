@@ -37,9 +37,9 @@ enum TimerHUDStyle {
     /// Fixed height for each tick mark.
     static let tickHeight: CGFloat = 3
     /// Vertical spacing between tick marks.
-    static let tickSpacing: CGFloat = (35 + 20 - 3 * 5) / 5
+    static let tickSpacing: CGFloat = (rowSpacing + numberHeight - tickHeight * CGFloat(numberStep)) / CGFloat(numberStep)
     /// Vertical offset applied for each minute of selected duration.
-    static let durationOffsetStep: CGFloat = (35 + 20) / 5
+    static let durationOffsetStep: CGFloat = (rowSpacing + numberHeight) / 5
 
     /// Fixed height of the Timer HUD window.
     static let windowHeight: CGFloat = 350
@@ -140,7 +140,7 @@ struct TimerHUDView: View {
         }
 
         guard nextDuration != duration else { return }
-
+        
         NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
         withAnimation {
             duration = nextDuration
