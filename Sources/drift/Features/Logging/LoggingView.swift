@@ -44,7 +44,7 @@ struct LoggingView: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .firstTextBaseline, spacing: 24) {
                 LabeledContent("Last event", value: activityLog.lastInputDescription)
-                LabeledContent("Active HUDs", value: "\(hudStore.activeHUDs.count)")
+                LabeledContent("Active HUD", value: hudStore.activeHUDID?.rawValue ?? "none")
             }
             HStack(alignment: .firstTextBaseline, spacing: 24) {
                 LabeledContent("Frame", value: activityLog.latestSnapshot.map { "\($0.frame)" } ?? "—")

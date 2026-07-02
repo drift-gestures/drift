@@ -19,6 +19,14 @@ struct HUDID: Hashable, RawRepresentable, ExpressibleByStringLiteral, Sendable {
     }
 }
 
+/// Origin of a HUD session.
+enum HUDSessionSource: Sendable {
+    /// A real listener-owned gesture opened the HUD.
+    case listener
+    /// A temporary testing injection opened the HUD.
+    case testing
+}
+
 /// Placeholder for per-HUD state stored by `HUDStore`.
 struct HUDState: Sendable {}
 

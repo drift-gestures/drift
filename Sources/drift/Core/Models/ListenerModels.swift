@@ -147,7 +147,7 @@ struct ListenerDecision: Sendable {
     let claimInteraction: Bool
     /// Foreground-app input events that should be suppressed while this decision is active.
     let suppressions: Set<SuppressionRequest>
-    /// Semantic events emitted for app-level UI handling.
+    /// Observational events emitted after this listener has already applied its effects.
     let emittedEvents: [BackendEvent]
 
     /// Creates a listener decision.
@@ -155,7 +155,7 @@ struct ListenerDecision: Sendable {
     ///   - stopPropagation: Whether to stop calling later listeners for this interaction.
     ///   - claimInteraction: Whether this listener should exclusively receive the current interaction.
     ///   - suppressions: Input suppression requests to apply to foreground-app events.
-    ///   - emittedEvents: Semantic events to deliver to app-level UI code.
+    ///   - emittedEvents: Completed listener effects to deliver for logging or UI synchronization.
     init(
         stopPropagation: Bool = false,
         claimInteraction: Bool = false,

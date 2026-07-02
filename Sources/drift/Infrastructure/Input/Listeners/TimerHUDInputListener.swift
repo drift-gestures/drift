@@ -7,12 +7,14 @@ struct TimerHUDInputListener: Listener {
     /// Current recognition state used by the listener pipeline.
     var gestureStatus: GestureStatus = .waiting
 
-    /// Cross-thread visibility mirror used to let Escape close an already visible Timer HUD.
-    private let hudVisibilityState: HUDVisibilityState?
+    /// Runtime handle used to own Timer HUD lifecycle and message delivery.
+    private let hudController: HUDController?
     /// Last contact center used as the baseline for activation or input deltas.
     private var pendingCenter: CGPoint?
     /// Last scale value used to classify pinch input.
     private var pendingScale = 1.0
+    /// How the current Timer HUD input stream was started.
+    private var activationSource: TimerHUDActivationSource?
 
     /// Minimum normalized movement needed to activate the Timer HUD.
     private let activationThreshold: CGFloat = 0.1
@@ -26,9 +28,12 @@ struct TimerHUDInputListener: Listener {
     private let pinchThreshold = 0.04
 
     /// Creates a Timer HUD listener.
-    /// - Parameter hudVisibilityState: Optional visibility mirror used for Escape-key close behavior.
-    init(hudVisibilityState: HUDVisibilityState? = nil) {
-        self.hudVisibilityState = hudVisibilityState
+    /// - Parameters:
+    ///   - hudController: Optional lifecycle handle for HUD ownership.
+    init(
+        hudController: HUDController? = nil
+    ) {
+        self.hudController = hudController
     }
 
     /// Routes one interaction to the Timer HUD state machine.
@@ -51,7 +56,7 @@ struct TimerHUDInputListener: Listener {
     private mutating func onTrackpadSnapshot(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
         switch gestureStatus {
         case .waiting:
-            if isTimerHUDActive {
+            if isTimerHUDActiveForTesting {
                 return startTimerInput(for: snapshot)
             }
             return checkForTimerActivationStart(snapshot)
@@ -83,6 +88,7 @@ struct TimerHUDInputListener: Listener {
 
         pendingCenter = snapshot.center
         pendingScale = snapshot.scale
+        activationSource = .testingHUD
         gestureStatus = .progressing(snapshot)
         return ListenerDecision(
             claimInteraction: true,
@@ -101,10 +107,10 @@ struct TimerHUDInputListener: Listener {
         switch gestureStatus {
         case .waiting:
             guard isTimerHUDActive else { return ListenerDecision() }
-            reset()
+            guard closeTimerHUD() else { return ListenerDecision() }
             return ListenerDecision(
                 suppressions: suppressions,
-                emittedEvents: [.timerHUDCloseRequested]
+                emittedEvents: [.timerHUDDidClose(reason: .escape)]
             )
         case .possible(let snapshot):
             gestureStatus = .cancelled(
@@ -114,17 +120,17 @@ struct TimerHUDInputListener: Listener {
             reset()
             return ListenerDecision(suppressions: suppressions)
         case .progressing:
-            reset()
+            guard closeTimerHUD() else { return ListenerDecision() }
             return ListenerDecision(
                 suppressions: suppressions,
-                emittedEvents: [.timerHUDCloseRequested]
+                emittedEvents: [.timerHUDDidClose(reason: .escape)]
             )
         case .cancelled, .ended:
             guard isTimerHUDActive else { return ListenerDecision() }
-            reset()
+            guard closeTimerHUD() else { return ListenerDecision() }
             return ListenerDecision(
                 suppressions: suppressions,
-                emittedEvents: [.timerHUDCloseRequested]
+                emittedEvents: [.timerHUDDidClose(reason: .escape)]
             )
         }
     }
@@ -135,8 +141,8 @@ struct TimerHUDInputListener: Listener {
     private mutating func onClickOutside(_ click: ClickOutsideInteraction) -> ListenerDecision {
         guard click.hudID == TimerHUDDefinition.hudID else { return ListenerDecision() }
 
-        reset()
-        return ListenerDecision(emittedEvents: [.timerHUDCloseRequested])
+        guard closeTimerHUD() else { return ListenerDecision() }
+        return ListenerDecision(emittedEvents: [.timerHUDDidClose(reason: .clickOutside)])
     }
 
     /// Checks whether a snapshot can start the bottom-left two-finger activation gesture.
@@ -178,11 +184,16 @@ struct TimerHUDInputListener: Listener {
 
         self.pendingCenter = snapshot.center
         pendingScale = snapshot.scale
+        activationSource = .activationGesture
         gestureStatus = .progressing(snapshot)
+        guard openTimerHUD(source: .listener) else {
+            reset()
+            return ListenerDecision()
+        }
         return ListenerDecision(
             claimInteraction: true,
             suppressions: activeSuppressions,
-            emittedEvents: [.timerHUDActivationRequested]
+            emittedEvents: [.timerHUDDidOpen(source: .listener)]
         )
     }
 
@@ -190,6 +201,16 @@ struct TimerHUDInputListener: Listener {
     /// - Parameter snapshot: The current progressing gesture snapshot.
     /// - Returns: A claimed decision with optional input and foreground-event suppressions.
     private mutating func receiveTimerInput(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
+        guard hudController == nil || isTimerHUDActive else {
+            clearTracking()
+            return ListenerDecision()
+        }
+
+        if activationSource == .testingHUD && !isTimerHUDActiveForTesting {
+            clearTracking()
+            return ListenerDecision()
+        }
+
         guard snapshot.fingerCount == 2 else {
             return ListenerDecision()
         }
@@ -215,10 +236,14 @@ struct TimerHUDInputListener: Listener {
         self.pendingCenter = snapshot.center
         pendingScale = snapshot.scale
         gestureStatus = .progressing(snapshot)
+        guard sendTimerHUDInput(input) else {
+            clearTracking()
+            return ListenerDecision()
+        }
         return ListenerDecision(
             claimInteraction: true,
             suppressions: suppressions(for: input),
-            emittedEvents: [.timerHUDInput(input)]
+            emittedEvents: [.timerHUDDidReceiveInput(input)]
         )
     }
 
@@ -250,7 +275,38 @@ struct TimerHUDInputListener: Listener {
 
     /// Whether the Timer HUD is currently visible according to the shared visibility mirror.
     private var isTimerHUDActive: Bool {
-        hudVisibilityState?.isActive(TimerHUDDefinition.hudID) ?? false
+        hudController?.isActive(TimerHUDDefinition.hudID) ?? false
+    }
+
+    /// Whether the Timer HUD was opened through a testing-only control.
+    private var isTimerHUDActiveForTesting: Bool {
+        hudController?.isTesting(TimerHUDDefinition.hudID) ?? false
+    }
+
+    /// Opens the Timer HUD through the listener-owned HUD controller.
+    /// - Parameter source: Source for the new HUD session.
+    /// - Returns: `true` when the Timer HUD is active.
+    private func openTimerHUD(source: HUDSessionSource) -> Bool {
+        hudController?.open(TimerHUDDefinition.hudID, source: source) ?? true
+    }
+
+    /// Closes the Timer HUD through the listener-owned HUD controller and resets after success.
+    /// - Returns: `true` when the Timer HUD was closed or no controller is installed.
+    private mutating func closeTimerHUD() -> Bool {
+        guard let hudController else {
+            reset()
+            return true
+        }
+        guard hudController.close(TimerHUDDefinition.hudID) else { return false }
+        reset()
+        return true
+    }
+
+    /// Delivers input through the listener-owned HUD controller.
+    /// - Parameter input: Timer HUD input payload.
+    /// - Returns: `true` when the message was accepted.
+    private func sendTimerHUDInput(_ input: TimerHUDInput) -> Bool {
+        hudController?.send(.timerInput(input), to: TimerHUDDefinition.hudID) ?? true
     }
 
     /// Checks whether the contact center is inside the bottom-left activation region.
@@ -279,6 +335,7 @@ struct TimerHUDInputListener: Listener {
     private mutating func clearTracking() {
         pendingCenter = nil
         pendingScale = 1.0
+        activationSource = nil
     }
 
     /// Classifies movement since the previous baseline into a Timer HUD input.
@@ -327,4 +384,12 @@ private extension CancellationReason {
     static let timerHUDGestureRuleBroken = CancellationReason(
         description: "Timer HUD gesture rule broken"
     )
+}
+
+/// The source that started a Timer HUD input stream.
+private enum TimerHUDActivationSource: String {
+    /// The user performed the real Timer HUD activation gesture.
+    case activationGesture
+    /// The Timer HUD was opened through temporary testing controls.
+    case testingHUD
 }

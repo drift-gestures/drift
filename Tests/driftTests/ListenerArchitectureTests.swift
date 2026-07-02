@@ -41,11 +41,12 @@ final class ListenerArchitectureTests: XCTestCase {
         })
     }
 
+    @MainActor
     func testEscapeEndsClaimedTimerHUDInteraction() {
-        let visibilityState = HUDVisibilityState()
-        visibilityState.setActiveHUDs([TimerHUDDefinition.hudID])
+        let hudController = makeHUDController()
+        hudController.open(TimerHUDDefinition.hudID, source: .listener)
         let pipeline = ListenerPipeline(listeners: [
-            TimerHUDInputListener(hudVisibilityState: visibilityState),
+            TimerHUDInputListener(hudController: hudController),
         ])
 
         _ = pipeline.process(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
@@ -167,10 +168,13 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertEqual(input.frame, 3)
     }
 
-    func testVisibleTimerHUDStartsInputWithoutActivationSwipe() {
-        let visibilityState = HUDVisibilityState()
-        visibilityState.setActiveHUDs([TimerHUDDefinition.hudID])
-        var listener = TimerHUDInputListener(hudVisibilityState: visibilityState)
+    @MainActor
+    func testTestingTimerHUDStartsInputWithoutActivationSwipe() {
+        let hudController = makeHUDController()
+        hudController.open(TimerHUDDefinition.hudID, source: .testing)
+        var listener = TimerHUDInputListener(
+            hudController: hudController
+        )
 
         let started = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.5), frame: 1))
         let inputResult = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.54, y: 0.5), frame: 2))
@@ -186,6 +190,23 @@ final class ListenerArchitectureTests: XCTestCase {
         }
         XCTAssertEqual(input.kind, .scrollRight)
         XCTAssertEqual(input.frame, 2)
+    }
+
+    @MainActor
+    func testVisibleTimerHUDDoesNotStartInputWithoutTestingActivation() {
+        let hudController = makeHUDController()
+        hudController.open(TimerHUDDefinition.hudID, source: .listener)
+        var listener = TimerHUDInputListener(
+            hudController: hudController
+        )
+
+        let started = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.5), frame: 1))
+        let inputResult = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.54, y: 0.5), frame: 2))
+
+        XCTAssertFalse(started.claimInteraction)
+        XCTAssertTrue(started.emittedEvents.isEmpty)
+        XCTAssertFalse(inputResult.claimInteraction)
+        XCTAssertTrue(inputResult.emittedEvents.isEmpty)
     }
 
     func testReleasingActivationGestureKeepsTimerHUDListening() {
@@ -228,6 +249,38 @@ final class ListenerArchitectureTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testClickOutsideVisibleTimerHUDStopsFurtherHeldScrollInput() {
+        let hudController = makeHUDController()
+        hudController.open(TimerHUDDefinition.hudID, source: .testing)
+        let pipeline = ListenerPipeline(listeners: [
+            TimerHUDInputListener(
+                hudController: hudController
+            ),
+        ])
+
+        _ = pipeline.process(snapshot(.began, center: CGPoint(x: 0.5, y: 0.5), frame: 1))
+        let closeResult = pipeline.process(
+            .clickOutside(
+                ClickOutsideInteraction(
+                    hudID: TimerHUDDefinition.hudID,
+                    screenLocation: CGPoint(x: 500, y: 500)
+                )
+            )
+        )
+        let heldScrollResult = pipeline.process(snapshot(.changed, center: CGPoint(x: 0.5, y: 0.6), frame: 2))
+
+        XCTAssertEqual(closeResult.events.count, 1)
+        guard case .timerHUDCloseRequested = closeResult.events.first else {
+            return XCTFail("Expected timer HUD close request.")
+        }
+        XCTAssertFalse(hudController.isTesting(TimerHUDDefinition.hudID))
+        XCTAssertFalse(hudController.isActive(TimerHUDDefinition.hudID))
+        XCTAssertFalse(heldScrollResult.didClaimInteraction)
+        XCTAssertTrue(heldScrollResult.events.isEmpty)
+        XCTAssertTrue(heldScrollResult.suppressions.isEmpty)
+    }
+
     func testEscapeDuringTimerHUDGestureRequestsCloseAndSuppressesKeyPress() {
         var listener = TimerHUDInputListener()
 
@@ -246,13 +299,18 @@ final class ListenerArchitectureTests: XCTestCase {
         }
     }
 
+    @MainActor
     func testEscapeClosesVisibleTimerHUDAfterGestureReset() {
-        let visibilityState = HUDVisibilityState()
-        visibilityState.setActiveHUDs([TimerHUDDefinition.hudID])
-        var listener = TimerHUDInputListener(hudVisibilityState: visibilityState)
+        let hudController = makeHUDController()
+        hudController.open(TimerHUDDefinition.hudID, source: .testing)
+        var listener = TimerHUDInputListener(
+            hudController: hudController
+        )
 
         let result = listener.onInteraction(.keyboardPress(escapePress))
 
+        XCTAssertFalse(hudController.isTesting(TimerHUDDefinition.hudID))
+        XCTAssertFalse(hudController.isActive(TimerHUDDefinition.hudID))
         XCTAssertEqual(result.suppressions, [.keyPress(keyCode: KeyboardKey.escape)])
         XCTAssertEqual(result.emittedEvents.count, 1)
         guard case .timerHUDCloseRequested = result.emittedEvents.first else {
@@ -336,6 +394,20 @@ final class ListenerArchitectureTests: XCTestCase {
 
     private func suppressingEscape(_ suppressions: Set<SuppressionRequest>) -> Set<SuppressionRequest> {
         suppressions.union([.keyPress(keyCode: KeyboardKey.escape)])
+    }
+
+    @MainActor
+    private func makeHUDController() -> HUDController {
+        let visibilityState = HUDVisibilityState()
+        let testingState = HUDTestingState()
+        let hudStore = HUDStore(visibilityState: visibilityState)
+        let hudMessages = HUDMessageBus()
+        return HUDController(
+            hudStore: hudStore,
+            hudMessages: hudMessages,
+            visibilityState: visibilityState,
+            testingState: testingState
+        )
     }
 }
 

@@ -14,10 +14,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let activityLog = ActivityLogStore()
     /// Thread-safe HUD visibility mirror shared with listener code.
     private let hudVisibilityState = HUDVisibilityState()
+    /// Thread-safe marker for HUDs opened by temporary testing controls.
+    private let hudTestingState = HUDTestingState()
     /// Message bus for delivering backend inputs to visible HUD views.
     private let hudMessages = HUDMessageBus()
     /// Main-actor source of truth for HUD visibility and state.
     private lazy var hudStore = HUDStore(visibilityState: hudVisibilityState)
+    /// Runtime owner for the single active HUD session.
+    private lazy var hudController = HUDController(
+        hudStore: hudStore,
+        hudMessages: hudMessages,
+        visibilityState: hudVisibilityState,
+        testingState: hudTestingState
+    )
+    /// Temporary menu-bar HUD testing injection.
+    private lazy var hudTestingController = HUDTestingController(hudController: hudController)
     /// Presenter responsible for creating and monitoring floating HUD windows.
     private lazy var hudPresenter = HUDWindowPresenter(
         hudStore: hudStore,
@@ -31,7 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var swiftBridge = SwiftBridge(
         activityLog: activityLog,
         listeners: [
-            TimerHUDInputListener(hudVisibilityState: hudVisibilityState)
+            TimerHUDInputListener(
+                hudController: hudController
+            )
         ],
         eventReceiver: { [weak self] event in
             self?.handleBackendEvent(event)
@@ -39,9 +52,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         snapshotReceiver: { [weak self] snapshot in
             self?.hudStore.updateTrackpad(snapshot)
         },
-        shouldReceiveKeyboardInteraction: { [hudVisibilityState] keyPress in
+        shouldReceiveKeyboardInteraction: { [hudController] keyPress in
             keyPress.keyCode == KeyboardKey.escape &&
-                hudVisibilityState.isActive(TimerHUDDefinition.hudID)
+                hudController.isActive(TimerHUDDefinition.hudID)
         }
     )
 
@@ -112,33 +125,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Toggles Timer HUD visibility from the menu bar.
     @objc private func toggleTimerHUD() {
-        hudStore.toggle(TimerHUDDefinition.hudID)
-        let isActive = hudStore.activeHUDs.contains(TimerHUDDefinition.hudID)
-        activityLog.record("\(isActive ? "Opened" : "Closed") Timer HUD from the menu bar.", category: .system)
+        let hudID = TimerHUDDefinition.hudID
+        let isActive = hudController.isActive(hudID)
+        let isActiveAfterToggle = hudTestingController.toggle(hudID)
+        activityLog.record("\(isActive ? "Closed" : "Opened") Timer HUD from the menu bar.", category: .system)
+        if isActiveAfterToggle {
+            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        }
         updateHUDMenuState()
     }
 
-    /// Applies semantic backend events to HUD state and messages.
+    /// Observes completed listener events for logging, haptics, and menu synchronization.
     /// - Parameter event: The event emitted by the input bridge.
     private func handleBackendEvent(_ event: BackendEvent) {
         switch event {
-        case .timerHUDActivationRequested:
-            hudStore.activate(TimerHUDDefinition.hudID)
+        case .timerHUDDidOpen:
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
             activityLog.record("Opened Timer HUD from the bottom-left swipe.", category: .action)
             updateHUDMenuState()
-        case .timerHUDCloseRequested:
-            hudStore.deactivate(TimerHUDDefinition.hudID)
-            activityLog.record("Closed Timer HUD from an outside click.", category: .action)
+        case .timerHUDDidClose(let reason):
+            let reasonText = switch reason {
+            case .clickOutside: "an outside click"
+            case .escape: "Escape"
+            }
+            activityLog.record("Closed Timer HUD from \(reasonText).", category: .action)
             updateHUDMenuState()
-        case .timerHUDInput(let input):
-            hudMessages.send(.timerInput(input), to: TimerHUDDefinition.hudID)
+        case .timerHUDDidReceiveInput(let input):
+            activityLog.record("Timer HUD received \(input.kind.displayName).", category: .action)
         }
     }
 
     /// Synchronizes the Timer HUD menu item title and checkmark with current HUD state.
     private func updateHUDMenuState() {
-        let isActive = hudStore.activeHUDs.contains(TimerHUDDefinition.hudID)
+        let isActive = hudController.isActive(TimerHUDDefinition.hudID)
         timerHUDMenuItem?.state = isActive ? .on : .off
         timerHUDMenuItem?.title = isActive ? "Hide Timer HUD" : "Show Timer HUD"
     }

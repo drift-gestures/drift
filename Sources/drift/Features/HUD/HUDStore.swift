@@ -30,19 +30,27 @@ final class HUDMessageBus: ObservableObject {
     }
 }
 
-/// Thread-safe mirror of currently visible HUDs for non-main-actor listener code.
+/// Thread-safe mirror of the currently visible HUD for non-main-actor listener code.
 final class HUDVisibilityState: @unchecked Sendable {
-    /// Protects access to `activeHUDs` across event-tap and main-actor callers.
+    /// Protects access to `activeHUDID` across event-tap and main-actor callers.
     private let lock = NSLock()
-    /// The HUD identifiers that are currently visible.
-    private var activeHUDs: Set<HUDID> = []
+    /// The HUD identifier that is currently visible, if any.
+    private var activeHUDID: HUDID?
 
-    /// Replaces the set of active HUD identifiers.
-    /// - Parameter ids: The HUDs that should be treated as visible.
-    func setActiveHUDs(_ ids: Set<HUDID>) {
+    /// Replaces the active HUD identifier.
+    /// - Parameter id: The HUD that should be treated as visible.
+    func setActiveHUDID(_ id: HUDID?) {
         lock.lock()
-        activeHUDs = ids
+        activeHUDID = id
         lock.unlock()
+    }
+
+    /// The currently active HUD identifier.
+    var currentHUDID: HUDID? {
+        lock.lock()
+        let id = activeHUDID
+        lock.unlock()
+        return id
     }
 
     /// Checks whether a HUD is currently active.
@@ -50,7 +58,7 @@ final class HUDVisibilityState: @unchecked Sendable {
     /// - Returns: `true` when the HUD is visible.
     func isActive(_ id: HUDID) -> Bool {
         lock.lock()
-        let isActive = activeHUDs.contains(id)
+        let isActive = activeHUDID == id
         lock.unlock()
         return isActive
     }
@@ -59,8 +67,8 @@ final class HUDVisibilityState: @unchecked Sendable {
 /// Main-actor source of truth for HUD visibility, custom HUD state, and live trackpad state.
 @MainActor
 final class HUDStore: ObservableObject {
-    /// HUD identifiers currently displayed by `HUDWindowPresenter`.
-    @Published private(set) var activeHUDs: Set<HUDID> = []
+    /// HUD identifier currently displayed by `HUDWindowPresenter`.
+    @Published private(set) var activeHUDID: HUDID?
     /// Custom per-HUD state keyed by HUD raw identifier.
     @Published private(set) var customStates: [String: HUDState] = [:]
     /// Latest trackpad state available to HUD layout and rendering.
@@ -75,32 +83,11 @@ final class HUDStore: ObservableObject {
         self.visibilityState = visibilityState
     }
 
-    /// Marks a HUD as visible.
-    /// - Parameter id: The HUD identifier to activate.
-    func activate(_ id: HUDID) {
-        var nextHUDs = activeHUDs
-        nextHUDs.insert(id)
-        setActiveHUDs(nextHUDs)
-    }
-
-    /// Marks a HUD as hidden.
-    /// - Parameter id: The HUD identifier to deactivate.
-    func deactivate(_ id: HUDID) {
-        var nextHUDs = activeHUDs
-        nextHUDs.remove(id)
-        setActiveHUDs(nextHUDs)
-    }
-
-    /// Toggles a HUD between visible and hidden states.
-    /// - Parameter id: The HUD identifier to toggle.
-    func toggle(_ id: HUDID) {
-        var nextHUDs = activeHUDs
-        if activeHUDs.contains(id) {
-            nextHUDs.remove(id)
-        } else {
-            nextHUDs.insert(id)
-        }
-        setActiveHUDs(nextHUDs)
+    /// Marks one HUD as visible or clears HUD visibility.
+    /// - Parameter id: The HUD identifier to show, or `nil` to hide every HUD.
+    func setActiveHUDID(_ id: HUDID?) {
+        activeHUDID = id
+        visibilityState?.setActiveHUDID(id)
     }
 
     /// Stores custom state for a HUD-specific key.
@@ -117,10 +104,10 @@ final class HUDStore: ObservableObject {
         trackpadState.latestSnapshot = snapshot
     }
 
-    /// Replaces active HUDs and synchronizes the optional thread-safe visibility mirror.
-    /// - Parameter huds: The next active HUD set.
-    private func setActiveHUDs(_ huds: Set<HUDID>) {
-        activeHUDs = huds
-        visibilityState?.setActiveHUDs(huds)
+    /// Whether a specific HUD is the active HUD.
+    /// - Parameter id: The HUD identifier to test.
+    /// - Returns: `true` when the HUD is currently active.
+    func isActive(_ id: HUDID) -> Bool {
+        activeHUDID == id
     }
 }

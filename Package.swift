@@ -10,6 +10,9 @@ let package = Package(
     products: [
         .executable(name: "drift", targets: ["drift"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.1.0")
+    ],
     targets: [
         .target(
             name: "driftMultitouch",
@@ -26,12 +29,12 @@ let package = Package(
             ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
-                .linkedFramework("SwiftUI")
+                .linkedFramework("SwiftUI"),
             ]
         ),
         .testTarget(
             name: "driftTests",
             dependencies: ["drift"]
-        )
-    ]
+        ),
+    ],
 )
