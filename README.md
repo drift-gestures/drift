@@ -22,6 +22,22 @@ Each future listener belongs in `Sources/drift/Infrastructure/Input/Listeners` a
 
 Implementation notes live beside the types and behavior they describe as code comments.
 
+## UI implementation rules
+
+- Clarify before assuming when a UI request is ambiguous.
+- Respect changes made by the user. If the user removes a style constant, dimension, animation, transition, or abstraction, keep it removed unless there is an explicit request to bring it back.
+- Be extra careful with UI changes and prefer the smallest edit that satisfies the request.
+- Use existing values for typography, padding, spacing, border radius, colors, and dimensions. If an appropriate value does not already exist, ask before adding one.
+- Do not introduce random or one-off style values. Avoid local aliases for shared style values unless explicitly requested.
+
+## SwiftUI animation guardrails
+
+- If a style constant, dimension, animation, transition, or abstraction is removed, keep it removed unless there is an explicit request to bring it back. Removals are treated as intentional design direction.
+- Keep HUD/window size changes mode-based and stable. Do not update `HUDStore` size overrides from hover, focus, countdown, or other high-frequency UI state.
+- Avoid changing a parent `.frame(width:)` at the same time a child view is entering or leaving with a transition. Reserve the needed width and transition the child inside that stable space.
+- For hover-only side panels such as the Timer/Pomodoro duration rail, keep the NSPanel size and parent SwiftUI frame constant while toggling the rail view.
+- Small fixed cells inside rows, such as icon alignment boxes, are fine because they do not resize the HUD window or transition parent container.
+
 ## Build in Xcode
 
 Open the native application project:

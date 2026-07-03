@@ -281,6 +281,35 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertTrue(heldScrollResult.suppressions.isEmpty)
     }
 
+    @MainActor
+    func testProgrammaticTimerHUDCloseResetsListenerForNextActivationGesture() {
+        let hudController = makeHUDController()
+        var listener = TimerHUDInputListener(hudController: hudController)
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
+        let opened = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 2))
+        XCTAssertTrue(opened.claimInteraction)
+        XCTAssertTrue(hudController.isActive(TimerHUDDefinition.hudID))
+
+        hudController.close(TimerHUDDefinition.hudID)
+        let releaseAfterExternalClose = listener.onInteraction(snapshot(.ended, center: CGPoint(x: 0.1, y: 0.31), frame: 3))
+        XCTAssertFalse(releaseAfterExternalClose.claimInteraction)
+        if case .waiting = listener.gestureStatus {
+        } else {
+            XCTFail("Expected programmatic HUD close to reset listener to waiting.")
+        }
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 4))
+        let reopened = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 5))
+
+        XCTAssertTrue(reopened.claimInteraction)
+        XCTAssertTrue(hudController.isActive(TimerHUDDefinition.hudID))
+        XCTAssertEqual(reopened.emittedEvents.count, 1)
+        guard case .timerHUDDidOpen = reopened.emittedEvents.first else {
+            return XCTFail("Expected Timer HUD to reopen after programmatic close.")
+        }
+    }
+
     func testEscapeDuringTimerHUDGestureRequestsCloseAndSuppressesKeyPress() {
         var listener = TimerHUDInputListener()
 

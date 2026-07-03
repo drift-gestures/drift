@@ -202,12 +202,12 @@ struct TimerHUDInputListener: Listener {
     /// - Returns: A claimed decision with optional input and foreground-event suppressions.
     private mutating func receiveTimerInput(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
         guard hudController == nil || isTimerHUDActive else {
-            clearTracking()
+            reset()
             return ListenerDecision()
         }
 
         if activationSource == .testingHUD && !isTimerHUDActiveForTesting {
-            clearTracking()
+            reset()
             return ListenerDecision()
         }
 

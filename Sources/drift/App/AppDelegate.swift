@@ -29,11 +29,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     )
     /// Temporary menu-bar HUD testing injection.
     private lazy var hudTestingController = HUDTestingController(hudController: hudController)
+    /// Timer HUD definition, including its runtime Timer/Pomodoro services.
+    private lazy var timerHUDDefinition = TimerHUDDefinition(hudController: hudController)
     /// Presenter responsible for creating and monitoring floating HUD windows.
     private lazy var hudPresenter = HUDWindowPresenter(
         hudStore: hudStore,
         hudMessages: hudMessages,
-        definitions: [AnyHUDDefinition(TimerHUDDefinition())],
+        definitions: [AnyHUDDefinition(timerHUDDefinition)],
         interactionReceiver: { [weak self] interaction in
             self?.swiftBridge.receive(interaction)
         }
@@ -62,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// - Parameter notification: The AppKit launch notification.
     func applicationDidFinishLaunching(_ notification: Notification) {
         activityLog.record("drift launched with no registered gesture listeners.", category: .system)
+        timerHUDDefinition.applicationDidFinishLaunching()
         swiftBridge.start()
         configureMenuBar()
         hudPresenter.start()

@@ -82,6 +82,16 @@ final class TimerHUDPomodoroTests: XCTestCase {
         XCTAssertEqual(state.pomodoroDurations.longBreak, 15)
     }
 
+    func testPomodoroModeDoesNotUpdateLockedActiveField() {
+        var state = TimerHUDInteractionState(mode: .pomodoro)
+        state.setHover(.focus, isHovered: true)
+
+        let didUpdate = state.receivePomodoroInput(scrollAmount: 10, lockedField: .focus)
+
+        XCTAssertFalse(didUpdate)
+        XCTAssertEqual(state.pomodoroDurations.focus, 25)
+    }
+
     func testPomodoroModeLeftScrollSwitchesBackToTimer() {
         var state = TimerHUDInteractionState(mode: .pomodoro)
         state.setHover(.focus, isHovered: true)
