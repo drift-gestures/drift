@@ -47,7 +47,7 @@ final class HUDWindowPresenter {
     /// Starts observing HUD visibility and synchronizes the initial window set.
     func start() {
         guard cancellable == nil else { return }
-        cancellable = hudStore.$activeHUDID.sink { [weak self] activeHUDID in
+        cancellable = Publishers.CombineLatest(hudStore.$activeHUDID, hudStore.$sizeOverrides).sink { [weak self] activeHUDID, _ in
             self?.syncWindow(activeHUDID: activeHUDID)
         }
         syncWindow(activeHUDID: hudStore.activeHUDID)
@@ -66,6 +66,12 @@ final class HUDWindowPresenter {
             let window = makeWindow(for: definition)
             activeWindow = (id: activeHUDID, panel: window)
             window.orderFrontRegardless()
+        }
+
+        if let activeWindow,
+           activeWindow.id == activeHUDID,
+           let definition = definitions[activeWindow.id] {
+            resizeActiveWindow(activeWindow.panel, to: displaySize(for: definition))
         }
 
         updateInteractionMonitoring()
@@ -96,11 +102,12 @@ final class HUDWindowPresenter {
             state: hudStore.customStates[definition.id.rawValue] ?? HUDState()
         )
         let origin = definition.position(in: layoutContext)
-        let frame = CGRect(origin: origin, size: definition.size)
+        let size = displaySize(for: definition)
+        let frame = CGRect(origin: origin, size: size)
         let rootView = definition.content(context: hudContext)
             .environmentObject(hudStore)
             .environmentObject(hudMessages)
-            .frame(width: definition.size.width, height: definition.size.height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
         let panel = NSPanel(
             contentRect: frame,
@@ -118,11 +125,33 @@ final class HUDWindowPresenter {
         panel.isReleasedWhenClosed = false
 
         let hostingView = NSHostingView(rootView: rootView)
-        hostingView.frame = CGRect(origin: .zero, size: definition.size)
+        hostingView.frame = CGRect(origin: .zero, size: size)
         hostingView.autoresizingMask = [.width, .height]
         panel.contentView = hostingView
         panel.setFrame(frame, display: false)
         return panel
+    }
+
+    /// Returns the active rendered size for a HUD definition.
+    /// - Parameter definition: The HUD definition to size.
+    /// - Returns: A view-provided override when present, otherwise the definition default.
+    private func displaySize(for definition: AnyHUDDefinition) -> CGSize {
+        hudStore.sizeOverride(for: definition.id) ?? definition.size
+    }
+
+    /// Resizes the active HUD window without changing its top-left anchor.
+    /// - Parameters:
+    ///   - panel: The HUD panel to resize.
+    ///   - size: The desired rendered size.
+    private func resizeActiveWindow(_ panel: NSPanel, to size: CGSize) {
+        guard panel.frame.size != size else { return }
+
+        var frame = panel.frame
+        let maxY = frame.maxY
+        frame.size = size
+        frame.origin.y = maxY - size.height
+        panel.setFrame(frame, display: true)
+        panel.contentView?.frame = CGRect(origin: .zero, size: size)
     }
 
     /// Starts or stops interaction monitoring based on whether any HUD windows are visible.

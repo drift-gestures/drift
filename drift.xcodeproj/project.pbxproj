@@ -79,6 +79,7 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AE1483D42FF2F177008D484B /* Timer */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Timer; sourceTree = "<group>"; };
 		AE3C8F4D2FF5511E00EC474F /* assets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (AE3C8F512FF551FE00EC474F /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = assets; sourceTree = "<group>"; };
+		AE420A182FF7A7E50055C84A /* Utilities */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Utilities; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -107,6 +108,7 @@
 		400000000000000000000002 /* Sources/drift */ = {
 			isa = PBXGroup;
 			children = (
+				AE420A182FF7A7E50055C84A /* Utilities */,
 				400000000000000000000007 /* App */,
 				400000000000000000000008 /* Core */,
 				40000000000000000000000C /* Features */,
@@ -306,6 +308,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				AE1483D42FF2F177008D484B /* Timer */,
+				AE420A182FF7A7E50055C84A /* Utilities */,
 			);
 			name = drift;
 			productName = drift;
@@ -434,7 +437,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -465,6 +468,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ldl",
