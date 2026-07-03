@@ -72,8 +72,8 @@ final class HUDStore: ObservableObject {
     @Published private(set) var activeHUDID: HUDID?
     /// Custom per-HUD state keyed by HUD raw identifier.
     @Published private(set) var customStates: [String: HUDState] = [:]
-    /// Optional rendered size override keyed by HUD raw identifier.
-    @Published private(set) var sizeOverrides: [String: CGSize] = [:]
+    /// Optional rendered size override keyed by HUD identifier.
+    @Published private(set) var sizeOverrides: [HUDID: CGSize] = [:]
     /// Latest trackpad state available to HUD layout and rendering.
     @Published private(set) var trackpadState = TrackpadState.idle
 
@@ -107,9 +107,9 @@ final class HUDStore: ObservableObject {
     ///   - id: The HUD whose size should be overridden.
     func setSizeOverride(_ size: CGSize?, for id: HUDID) {
         if let size {
-            sizeOverrides[id.rawValue] = size
+            sizeOverrides[id] = size
         } else {
-            sizeOverrides.removeValue(forKey: id.rawValue)
+            sizeOverrides.removeValue(forKey: id)
         }
     }
 
@@ -117,7 +117,7 @@ final class HUDStore: ObservableObject {
     /// - Parameter id: The HUD identifier to inspect.
     /// - Returns: The overridden size, or `nil` when the HUD should use its default.
     func sizeOverride(for id: HUDID) -> CGSize? {
-        sizeOverrides[id.rawValue]
+        sizeOverrides[id]
     }
 
     /// Updates the latest trackpad snapshot exposed to HUD layout and rendering.
