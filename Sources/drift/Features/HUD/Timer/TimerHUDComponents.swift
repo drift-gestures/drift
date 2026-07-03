@@ -64,7 +64,7 @@ enum TimerHUDStyle {
 }
 
 /// The currently mounted Timer HUD mode.
-enum TimerHUDMode: Equatable {
+enum TimerHUDMode: String, Equatable, Sendable {
     /// The original Timer UI is mounted.
     case timer
     /// The Pomodoro setup UI is mounted.
@@ -377,7 +377,8 @@ struct TimerHUDView: View {
         screenSize: CGSize,
         backgroundTimers: BackgroundTimerCoordinator,
         pomodoroPreferences: PomodoroPreferencesStore,
-        hudController: HUDController
+        hudController: HUDController,
+        initialMode: TimerHUDMode = .timer
     ) {
         self.screenSize = screenSize
         self.backgroundTimers = backgroundTimers
@@ -385,6 +386,7 @@ struct TimerHUDView: View {
         self.hudController = hudController
         _interactionState = State(
             initialValue: TimerHUDInteractionState(
+                mode: initialMode,
                 pomodoroDurations: pomodoroPreferences.durations
             )
         )

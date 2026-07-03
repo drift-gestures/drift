@@ -57,7 +57,8 @@ final class TimerHUDDefinition: HudDefinition {
             screenSize: size,
             backgroundTimers: backgroundTimers,
             pomodoroPreferences: pomodoroPreferences,
-            hudController: hudController
+            hudController: hudController,
+            initialMode: TimerHUDMode(rawValue: context.state.initialMode ?? "") ?? .timer
         )
     }
 

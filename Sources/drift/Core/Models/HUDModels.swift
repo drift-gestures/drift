@@ -27,8 +27,17 @@ enum HUDSessionSource: Sendable {
     case testing
 }
 
-/// Placeholder for per-HUD state stored by `HUDStore`.
-struct HUDState: Sendable {}
+/// Per-HUD state stored by `HUDStore`.
+struct HUDState: Sendable {
+    /// Optional initial mode identifier interpreted by HUD-specific content.
+    var initialMode: String?
+
+    /// Creates HUD state.
+    /// - Parameter initialMode: Optional initial mode identifier interpreted by the destination HUD.
+    init(initialMode: String? = nil) {
+        self.initialMode = initialMode
+    }
+}
 
 /// Runtime information used to size and position HUD windows.
 struct HUDLayoutContext: Sendable {

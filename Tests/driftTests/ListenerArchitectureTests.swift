@@ -76,6 +76,35 @@ final class ListenerArchitectureTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testBottomEdgeUpSwipeFurtherRightOpensPomodoroMode() async {
+        let visibilityState = HUDVisibilityState()
+        let testingState = HUDTestingState()
+        let hudStore = HUDStore(visibilityState: visibilityState)
+        let hudMessages = HUDMessageBus()
+        let hudController = HUDController(
+            hudStore: hudStore,
+            hudMessages: hudMessages,
+            visibilityState: visibilityState,
+            testingState: testingState
+        )
+        var listener = TimerHUDInputListener(hudController: hudController)
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.2, y: 0.1), frame: 1))
+        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.2, y: 0.31), frame: 2))
+        await Task.yield()
+
+        XCTAssertTrue(result.claimInteraction)
+        XCTAssertTrue(hudController.isActive(TimerHUDDefinition.hudID))
+        XCTAssertEqual(
+            hudStore.customStates[TimerHUDDefinition.hudID.rawValue]?.initialMode,
+            TimerHUDMode.pomodoro.rawValue
+        )
+        guard case .timerHUDDidOpen = result.emittedEvents.first else {
+            return XCTFail("Expected timer HUD activation request.")
+        }
+    }
+
     func testWaitingChangedFrameStartsOnlyActivationPossibility() {
         var listener = TimerHUDInputListener()
 

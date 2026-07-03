@@ -15,6 +15,8 @@ struct TimerHUDInputListener: Listener {
     private var pendingScale = 1.0
     /// How the current Timer HUD input stream was started.
     private var activationSource: TimerHUDActivationSource?
+    /// Initial mode requested by the current activation gesture.
+    private var pendingActivationMode: TimerHUDMode?
 
     /// Minimum normalized movement needed to activate the Timer HUD.
     private let activationThreshold: CGFloat = 0.1
@@ -22,6 +24,8 @@ struct TimerHUDInputListener: Listener {
     private let activationStartMaxX: CGFloat = 0.1
     /// Maximum normalized Y coordinate for activation start.
     private let activationStartMaxY: CGFloat = 0.15
+    /// Maximum normalized X coordinate for direct Pomodoro activation.
+    private let pomodoroActivationStartMaxX: CGFloat = 0.25
     /// Minimum center movement needed to emit a scroll-style Timer HUD input.
     private let scrollThreshold = 0.01
     /// Minimum scale delta needed to emit a pinch-style Timer HUD input.
@@ -176,12 +180,13 @@ struct TimerHUDInputListener: Listener {
     /// - Returns: A neutral decision after recording `.possible`, or no-op if the snapshot is not eligible.
     private mutating func checkForTimerActivationStart(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
         guard snapshot.fingerCount == 2,
-              isStartingFromBottomLeft(snapshot.center)
+              let activationMode = activationMode(for: snapshot.center)
         else {
             return ListenerDecision()
         }
         pendingCenter = snapshot.center
         pendingScale = snapshot.scale
+        pendingActivationMode = activationMode
         gestureStatus = .possible(snapshot)
         return ListenerDecision()
     }
@@ -212,7 +217,7 @@ struct TimerHUDInputListener: Listener {
         pendingScale = snapshot.scale
         activationSource = .activationGesture
         gestureStatus = .progressing(snapshot)
-        guard openTimerHUD(source: .listener) else {
+        guard openTimerHUD(source: .listener, initialMode: pendingActivationMode ?? .timer) else {
             reset()
             return ListenerDecision()
         }
@@ -318,8 +323,12 @@ struct TimerHUDInputListener: Listener {
     /// Opens the Timer HUD through the listener-owned HUD controller.
     /// - Parameter source: Source for the new HUD session.
     /// - Returns: `true` when the Timer HUD is active.
-    private func openTimerHUD(source: HUDSessionSource) -> Bool {
-        hudController?.open(TimerHUDDefinition.hudID, source: source) ?? true
+    private func openTimerHUD(source: HUDSessionSource, initialMode: TimerHUDMode = .timer) -> Bool {
+        hudController?.open(
+            TimerHUDDefinition.hudID,
+            source: source,
+            state: HUDState(initialMode: initialMode.rawValue)
+        ) ?? true
     }
 
     /// Closes the Timer HUD through the listener-owned HUD controller and resets after success.
@@ -341,11 +350,18 @@ struct TimerHUDInputListener: Listener {
         hudController?.send(.timerInput(input), to: TimerHUDDefinition.hudID) ?? true
     }
 
-    /// Checks whether the contact center is inside the bottom-left activation region.
+    /// Returns the requested initial mode for a bottom-edge activation start.
     /// - Parameter center: The normalized contact center.
-    /// - Returns: `true` when the contact is at the bottom-left edge.
-    private func isStartingFromBottomLeft(_ center: CGPoint) -> Bool {
-        center.x <= activationStartMaxX && center.y <= activationStartMaxY
+    /// - Returns: The mode to open, or `nil` when the start point is outside activation lanes.
+    private func activationMode(for center: CGPoint) -> TimerHUDMode? {
+        guard center.y <= activationStartMaxY else { return nil }
+        if center.x <= activationStartMaxX {
+            return .timer
+        }
+        if center.x <= pomodoroActivationStartMaxX {
+            return .pomodoro
+        }
+        return nil
     }
 
     /// Cancels the current activation gesture and clears tracked baseline values.
@@ -368,6 +384,7 @@ struct TimerHUDInputListener: Listener {
         pendingCenter = nil
         pendingScale = 1.0
         activationSource = nil
+        pendingActivationMode = nil
     }
 
     /// Classifies movement since the previous baseline into a Timer HUD input.
