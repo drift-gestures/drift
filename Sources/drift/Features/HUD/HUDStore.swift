@@ -1,4 +1,5 @@
 import Combine
+import CoreGraphics
 import Foundation
 
 /// Messages that can be delivered to a visible HUD.
@@ -71,6 +72,8 @@ final class HUDStore: ObservableObject {
     @Published private(set) var activeHUDID: HUDID?
     /// Custom per-HUD state keyed by HUD raw identifier.
     @Published private(set) var customStates: [String: HUDState] = [:]
+    /// Optional rendered size override keyed by HUD identifier.
+    @Published private(set) var sizeOverrides: [HUDID: CGSize] = [:]
     /// Latest trackpad state available to HUD layout and rendering.
     @Published private(set) var trackpadState = TrackpadState.idle
 
@@ -96,6 +99,25 @@ final class HUDStore: ObservableObject {
     ///   - key: The custom state key, usually based on a HUD identifier.
     func setCustomState(_ state: HUDState, for key: String) {
         customStates[key] = state
+    }
+
+    /// Overrides the rendered size for a HUD, or clears the override.
+    /// - Parameters:
+    ///   - size: The size to render, or `nil` to use the HUD definition default.
+    ///   - id: The HUD whose size should be overridden.
+    func setSizeOverride(_ size: CGSize?, for id: HUDID) {
+        if let size {
+            sizeOverrides[id] = size
+        } else {
+            sizeOverrides.removeValue(forKey: id)
+        }
+    }
+
+    /// Returns a size override for a HUD if one is active.
+    /// - Parameter id: The HUD identifier to inspect.
+    /// - Returns: The overridden size, or `nil` when the HUD should use its default.
+    func sizeOverride(for id: HUDID) -> CGSize? {
+        sizeOverrides[id]
     }
 
     /// Updates the latest trackpad snapshot exposed to HUD layout and rendering.

@@ -56,7 +56,7 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertFalse(result.didClaimInteraction)
         XCTAssertEqual(result.suppressions, [.keyPress(keyCode: KeyboardKey.escape)])
         XCTAssertEqual(result.events.count, 1)
-        guard case .timerHUDCloseRequested = result.events.first else {
+        guard case .timerHUDDidClose = result.events.first else {
             return XCTFail("Expected Escape to close Timer HUD.")
         }
     }
@@ -70,7 +70,7 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertTrue(result.claimInteraction)
         XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .vertical), .scroll(axis: .horizontal)]))
         XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDActivationRequested = result.emittedEvents.first else {
+        guard case .timerHUDDidOpen = result.emittedEvents.first else {
             return XCTFail("Expected timer HUD activation request.")
         }
     }
@@ -98,7 +98,7 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertTrue(result.claimInteraction)
         XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .vertical)]))
         XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDInput(let input) = result.emittedEvents.first else {
+        guard case .timerHUDDidReceiveInput(let input) = result.emittedEvents.first else {
             return XCTFail("Expected timer duration input.")
         }
         XCTAssertEqual(input.kind, .scrollUp)
@@ -128,7 +128,7 @@ final class ListenerArchitectureTests: XCTestCase {
 
         XCTAssertTrue(restarted.claimInteraction)
         XCTAssertEqual(restarted.emittedEvents.count, 1)
-        guard case .timerHUDActivationRequested = restarted.emittedEvents.first else {
+        guard case .timerHUDDidOpen = restarted.emittedEvents.first else {
             return XCTFail("Expected timer HUD activation request after reset.")
         }
     }
@@ -161,7 +161,7 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertTrue(result.claimInteraction)
         XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .horizontal)]))
         XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDInput(let input) = result.emittedEvents.first else {
+        guard case .timerHUDDidReceiveInput(let input) = result.emittedEvents.first else {
             return XCTFail("Expected timer HUD input.")
         }
         XCTAssertEqual(input.kind, .scrollRight)
@@ -185,7 +185,7 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertTrue(inputResult.claimInteraction)
         XCTAssertEqual(inputResult.suppressions, suppressingEscape([.scroll(axis: .horizontal)]))
         XCTAssertEqual(inputResult.emittedEvents.count, 1)
-        guard case .timerHUDInput(let input) = inputResult.emittedEvents.first else {
+        guard case .timerHUDDidReceiveInput(let input) = inputResult.emittedEvents.first else {
             return XCTFail("Expected visible Timer HUD to receive gesture input.")
         }
         XCTAssertEqual(input.kind, .scrollRight)
@@ -240,7 +240,7 @@ final class ListenerArchitectureTests: XCTestCase {
 
         XCTAssertFalse(result.claimInteraction)
         XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDCloseRequested = result.emittedEvents.first else {
+        guard case .timerHUDDidClose = result.emittedEvents.first else {
             return XCTFail("Expected timer HUD close request.")
         }
         if case .waiting = listener.gestureStatus {
@@ -271,7 +271,7 @@ final class ListenerArchitectureTests: XCTestCase {
         let heldScrollResult = pipeline.process(snapshot(.changed, center: CGPoint(x: 0.5, y: 0.6), frame: 2))
 
         XCTAssertEqual(closeResult.events.count, 1)
-        guard case .timerHUDCloseRequested = closeResult.events.first else {
+        guard case .timerHUDDidClose = closeResult.events.first else {
             return XCTFail("Expected timer HUD close request.")
         }
         XCTAssertFalse(hudController.isTesting(TimerHUDDefinition.hudID))
@@ -290,7 +290,7 @@ final class ListenerArchitectureTests: XCTestCase {
 
         XCTAssertEqual(result.suppressions, [.keyPress(keyCode: KeyboardKey.escape)])
         XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDCloseRequested = result.emittedEvents.first else {
+        guard case .timerHUDDidClose = result.emittedEvents.first else {
             return XCTFail("Expected Escape to close Timer HUD.")
         }
         if case .waiting = listener.gestureStatus {
@@ -313,7 +313,7 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertFalse(hudController.isActive(TimerHUDDefinition.hudID))
         XCTAssertEqual(result.suppressions, [.keyPress(keyCode: KeyboardKey.escape)])
         XCTAssertEqual(result.emittedEvents.count, 1)
-        guard case .timerHUDCloseRequested = result.emittedEvents.first else {
+        guard case .timerHUDDidClose = result.emittedEvents.first else {
             return XCTFail("Expected Escape to close visible Timer HUD.")
         }
     }
