@@ -55,7 +55,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.hudStore.updateTrackpad(snapshot)
         },
         shouldReceiveKeyboardInteraction: { [hudController] keyPress in
-            keyPress.keyCode == KeyboardKey.escape &&
+            (keyPress.keyCode == KeyboardKey.escape ||
+                (keyPress.modifiers.isEmpty && KeyboardKey.isReturn(keyPress.keyCode))) &&
                 hudController.isActive(TimerHUDDefinition.hudID)
         }
     )

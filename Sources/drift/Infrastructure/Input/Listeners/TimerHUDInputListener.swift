@@ -96,12 +96,22 @@ struct TimerHUDInputListener: Listener {
         )
     }
 
-    /// Handles Escape-key behavior for closing or cancelling Timer HUD gestures.
+    /// Handles keyboard behavior for Timer HUD shortcuts.
     /// - Parameter keyPress: The normalized keyboard press.
-    /// - Returns: The listener decision, including Escape suppression when handled.
+    /// - Returns: The listener decision, including key suppression when handled.
     private mutating func onKeyboardPress(_ keyPress: KeyboardPressInteraction) -> ListenerDecision {
-        guard keyPress.keyCode == KeyboardKey.escape else { return ListenerDecision() }
+        if keyPress.keyCode == KeyboardKey.escape {
+            return onEscapePress()
+        }
+        if KeyboardKey.isReturn(keyPress.keyCode) {
+            return onReturnPress(keyPress)
+        }
+        return ListenerDecision()
+    }
 
+    /// Handles Escape-key behavior for closing or cancelling Timer HUD gestures.
+    /// - Returns: The listener decision, including Escape suppression when handled.
+    private mutating func onEscapePress() -> ListenerDecision {
         let suppressions: Set<SuppressionRequest> = [.keyPress(keyCode: KeyboardKey.escape)]
 
         switch gestureStatus {
@@ -133,6 +143,22 @@ struct TimerHUDInputListener: Listener {
                 emittedEvents: [.timerHUDDidClose(reason: .escape)]
             )
         }
+    }
+
+    /// Handles Return-key behavior for visible Timer HUD default actions.
+    /// - Parameter keyPress: The normalized keyboard press.
+    /// - Returns: The listener decision, including Return suppression when handled.
+    private mutating func onReturnPress(_ keyPress: KeyboardPressInteraction) -> ListenerDecision {
+        guard keyPress.modifiers.isEmpty,
+              isTimerHUDActive,
+              sendTimerHUDDefaultAction()
+        else {
+            return ListenerDecision()
+        }
+
+        return ListenerDecision(
+            suppressions: [.keyPress(keyCode: keyPress.keyCode)]
+        )
     }
 
     /// Handles mouse clicks outside the Timer HUD window.
@@ -271,6 +297,12 @@ struct TimerHUDInputListener: Listener {
     /// - Returns: The combined suppression set.
     private func withEscapeSuppression(_ suppressions: Set<SuppressionRequest>) -> Set<SuppressionRequest> {
         suppressions.union([.keyPress(keyCode: KeyboardKey.escape)])
+    }
+
+    /// Sends a default-action request to the visible Timer HUD view.
+    /// - Returns: `true` when the active HUD accepted the message.
+    private func sendTimerHUDDefaultAction() -> Bool {
+        hudController?.send(.timerDefaultAction, to: TimerHUDDefinition.hudID) ?? false
     }
 
     /// Whether the Timer HUD is currently visible according to the shared visibility mirror.

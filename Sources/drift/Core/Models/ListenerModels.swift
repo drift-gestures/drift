@@ -101,6 +101,17 @@ struct KeyboardPressInteraction: Sendable {
 enum KeyboardKey {
     /// The macOS hardware key code for Escape.
     static let escape: UInt16 = 53
+    /// The macOS hardware key code for Return.
+    static let `return`: UInt16 = 36
+    /// The macOS hardware key code for keypad Enter.
+    static let keypadEnter: UInt16 = 76
+
+    /// Checks whether a key code should activate a default Return-style HUD action.
+    /// - Parameter keyCode: The hardware key code to test.
+    /// - Returns: `true` for Return and keypad Enter.
+    static func isReturn(_ keyCode: UInt16) -> Bool {
+        keyCode == Self.return || keyCode == Self.keypadEnter
+    }
 }
 
 /// A mouse click that occurred outside a displayed HUD window.

@@ -6,6 +6,8 @@ import Foundation
 enum HUDMessage: Sendable {
     /// Gesture-derived input for the Timer HUD.
     case timerInput(TimerHUDInput)
+    /// Keyboard request to run the Timer HUD's visible Return-style default action.
+    case timerDefaultAction
 }
 
 /// A HUD message paired with the destination HUD identifier.

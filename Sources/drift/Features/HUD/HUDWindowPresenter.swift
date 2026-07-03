@@ -195,7 +195,7 @@ final class HUDWindowPresenter {
             Task { @MainActor [weak self] in
                 self?.interactionReceiver(.keyboardPress(keyPress))
             }
-            return keyPress.keyCode == KeyboardKey.escape ? nil : event
+            return keyPress.isHUDHandledKey ? nil : event
         }
 
         globalKeyboardMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -277,6 +277,14 @@ struct AnyHUDDefinition {
     @MainActor
     func content(context: HUDContext) -> AnyView {
         contentProvider(context)
+    }
+}
+
+private extension KeyboardPressInteraction {
+    /// Whether this local key-down should be kept out of the foreground responder chain.
+    var isHUDHandledKey: Bool {
+        keyCode == KeyboardKey.escape ||
+            (modifiers.isEmpty && KeyboardKey.isReturn(keyCode))
     }
 }
 

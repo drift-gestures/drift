@@ -462,6 +462,8 @@ struct TimerHUDView: View {
         switch targetedMessage.message {
         case .timerInput(let input):
             receiveTimerHUDInput(input)
+        case .timerDefaultAction:
+            performDefaultAction()
         }
     }
 
@@ -536,6 +538,17 @@ struct TimerHUDView: View {
         justStartedPomodoro = true
         backgroundTimers.startPomodoro(durations: interactionState.pomodoroDurations)
         _ = hudController.close(TimerHUDDefinition.hudID)
+    }
+
+    /// Runs the visible Return-style primary action for the mounted HUD mode.
+    private func performDefaultAction() {
+        switch interactionState.mode {
+        case .timer:
+            startTimer()
+        case .pomodoro:
+            guard backgroundTimers.pomodoroSession == nil else { return }
+            startPomodoro()
+        }
     }
 
     /// Records Pomodoro hover state.
