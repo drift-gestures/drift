@@ -307,6 +307,39 @@ struct NoButtonAnimationStyle: ButtonStyle {
     }
 }
 
+/// Timer HUD transition helpers that preserve newer effects where available.
+private extension View {
+    /// Mode switch transition when Timer mode appears.
+    @ViewBuilder
+    func timerHUDLeadingModeTransition() -> some View {
+        if #available(macOS 14.0, *) {
+            transition(.move(edge: .leading).combined(with: .blurReplace))
+        } else {
+            transition(.move(edge: .leading).combined(with: .opacity))
+        }
+    }
+
+    /// Mode switch transition when Pomodoro mode appears.
+    @ViewBuilder
+    func timerHUDTrailingModeTransition() -> some View {
+        if #available(macOS 14.0, *) {
+            transition(.move(edge: .trailing).combined(with: .blurReplace))
+        } else {
+            transition(.move(edge: .trailing).combined(with: .opacity))
+        }
+    }
+
+    /// Side rail transition for Pomodoro duration hover.
+    @ViewBuilder
+    func timerHUDDurationRailTransition() -> some View {
+        if #available(macOS 14.0, *) {
+            transition(.blurReplace)
+        } else {
+            transition(.opacity)
+        }
+    }
+}
+
 /// Root SwiftUI view for the Timer HUD.
 struct TimerHUDView: View {
     /// Size used by the fade overlay to cover the visible Timer HUD area.
@@ -327,7 +360,7 @@ struct TimerHUDView: View {
                     duration: interactionState.timerDuration,
                     screenSize: screenSize
                 )
-                .transition(.move(edge: .leading).combined(with: .blurReplace))
+                .timerHUDLeadingModeTransition()
             case .pomodoro:
                 PomodoroHUDModeView(
                     durations: pomodoroDurationBinding,
@@ -336,7 +369,7 @@ struct TimerHUDView: View {
                     setFocusedField: setFocusedPomodoroField
                 )
         
-                .transition(.move(edge: .trailing).combined(with: .blurReplace))
+                .timerHUDTrailingModeTransition()
             }
         }
         .onAppear {
@@ -516,7 +549,7 @@ private struct PomodoroHUDModeView: View {
                         height: TimerHUDStyle.windowHeight
                     )
                 )
-                .transition(.blurReplace)
+                .timerHUDDurationRailTransition()
             }
         }
         .frame(width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerTickWidth, height: TimerHUDStyle.pomodoroPanelHeight, alignment: .topLeading)
