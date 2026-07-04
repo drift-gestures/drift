@@ -307,7 +307,7 @@ struct TimerHUDInputListener: Listener {
     /// Sends a default-action request to the visible Timer HUD view.
     /// - Returns: `true` when the active HUD accepted the message.
     private func sendTimerHUDDefaultAction() -> Bool {
-        hudController?.send(.timerDefaultAction, to: TimerHUDDefinition.hudID) ?? false
+        hudController?.send(.timer(.defaultAction), to: TimerHUDDefinition.hudID) ?? false
     }
 
     /// Whether the Timer HUD is currently visible according to the shared visibility mirror.
@@ -327,7 +327,7 @@ struct TimerHUDInputListener: Listener {
         hudController?.open(
             TimerHUDDefinition.hudID,
             source: source,
-            state: HUDState(initialMode: initialMode.rawValue)
+            state: HUDState(TimerHUDState(initialMode: initialMode))
         ) ?? true
     }
 
@@ -347,7 +347,7 @@ struct TimerHUDInputListener: Listener {
     /// - Parameter input: Timer HUD input payload.
     /// - Returns: `true` when the message was accepted.
     private func sendTimerHUDInput(_ input: TimerHUDInput) -> Bool {
-        hudController?.send(.timerInput(input), to: TimerHUDDefinition.hudID) ?? true
+        hudController?.send(.timer(.input(input)), to: TimerHUDDefinition.hudID) ?? true
     }
 
     /// Returns the requested initial mode for a bottom-edge activation start.

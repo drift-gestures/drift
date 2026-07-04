@@ -156,55 +156,11 @@ enum TimerHUDDurationFormatter {
         return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
 
-    /// Parses either minute-only or `MM:SS` input into whole minutes.
-    /// - Parameter text: User-entered duration text.
-    /// - Returns: Clamped minutes, or `nil` when the text is invalid.
-    static func parsed(_ text: String) -> Int? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        if let minutes = parseInteger(trimmed) {
-            return clamped(minutes)
-        }
-
-        let parts = trimmed.split(separator: ":", omittingEmptySubsequences: false)
-        guard parts.count == 2,
-              let minutes = parseInteger(parts[0]),
-              let seconds = parseInteger(parts[1]),
-              (0..<60).contains(seconds)
-        else {
-            return nil
-        }
-
-        return clamped(minutes + (seconds > 0 ? 1 : 0))
-    }
-
     /// Clamps a minute value to the supported range.
     /// - Parameter minutes: Duration in minutes.
     /// - Returns: A supported duration.
     static func clamped(_ minutes: Int) -> Int {
         min(maximumMinutes, max(minimumMinutes, minutes))
-    }
-
-    /// Parses one integer component without accepting partially formatted input.
-    /// - Parameter text: Component text to parse.
-    /// - Returns: An integer when the whole component is numeric, otherwise `nil`.
-    private static func parseInteger<S: StringProtocol>(_ text: S) -> Int? {
-        guard !text.isEmpty else {
-            return nil
-        }
-
-        var characters = Array(text)
-        if characters.first == "-" {
-            characters.removeFirst()
-        }
-        guard !characters.isEmpty,
-              characters.allSatisfy(\.isNumber)
-        else {
-            return nil
-        }
-
-        return Int(String(text))
     }
 }
 
@@ -218,8 +174,6 @@ struct TimerHUDInteractionState: Equatable {
     var pomodoroDurations = PomodoroDurations()
     /// Pomodoro field currently under the pointer.
     var hoveredPomodoroField: PomodoroDurationField?
-    /// Pomodoro field currently focused for typing.
-    var focusedPomodoroField: PomodoroDurationField?
 
     /// Preferred rendered size for the current mode, or `nil` for the default Timer size.
     var sizeOverride: CGSize? {
@@ -238,14 +192,12 @@ struct TimerHUDInteractionState: Equatable {
     mutating func switchToPomodoro() {
         mode = .pomodoro
         hoveredPomodoroField = nil
-        focusedPomodoroField = nil
     }
 
     /// Switches from Pomodoro to Timer mode.
     mutating func switchToTimer() {
         mode = .timer
         hoveredPomodoroField = nil
-        focusedPomodoroField = nil
     }
 
     /// Updates the hovered Pomodoro input field.
@@ -257,18 +209,6 @@ struct TimerHUDInteractionState: Equatable {
             hoveredPomodoroField = field
         } else if hoveredPomodoroField == field {
             hoveredPomodoroField = nil
-        }
-    }
-
-    /// Updates the focused Pomodoro input field.
-    /// - Parameters:
-    ///   - field: The field whose focus state changed.
-    ///   - isFocused: Whether the field is currently focused.
-    mutating func setFocus(_ field: PomodoroDurationField, isFocused: Bool) {
-        if isFocused {
-            focusedPomodoroField = field
-        } else if focusedPomodoroField == field {
-            focusedPomodoroField = nil
         }
     }
 
@@ -351,12 +291,22 @@ private extension View {
 struct TimerHUDView: View {
     /// Size used by the fade overlay to cover the visible Timer HUD area.
     let screenSize: CGSize
-    /// Runtime timer coordinator.
-    @ObservedObject private var backgroundTimers: BackgroundTimerCoordinator
-    /// Persisted Pomodoro duration preferences.
-    @ObservedObject private var pomodoroPreferences: PomodoroPreferencesStore
-    /// HUD lifecycle controller.
-    private let hudController: HUDController
+    /// Active Pomodoro session, if one exists.
+    let pomodoroSession: PomodoroSession?
+    /// Remaining seconds in the active Pomodoro block.
+    let pomodoroRemainingSeconds: TimeInterval
+    /// Saves edited Pomodoro durations.
+    let savePomodoroDurations: (PomodoroDurations) -> Void
+    /// Starts a background timer.
+    let startTimerAction: (Int) -> Bool
+    /// Starts a Pomodoro session.
+    let startPomodoroAction: (PomodoroDurations) -> Bool
+    /// Toggles pause for the active Pomodoro block.
+    let togglePomodoroPause: () -> Void
+    /// Skips the active Pomodoro block.
+    let skipPomodoroBlock: () -> Void
+    /// Stops the active Pomodoro session.
+    let stopPomodoro: () -> Void
 
     /// Bus that delivers Timer HUD input messages.
     @EnvironmentObject private var hudMessages: HUDMessageBus
@@ -370,24 +320,42 @@ struct TimerHUDView: View {
     /// Creates the Timer HUD root view.
     /// - Parameters:
     ///   - screenSize: Base HUD size.
-    ///   - backgroundTimers: Runtime timer coordinator.
-    ///   - pomodoroPreferences: Persisted Pomodoro duration store.
-    ///   - hudController: HUD lifecycle handle.
+    ///   - initialMode: Initial mounted mode for this HUD presentation.
+    ///   - initialPomodoroDurations: Initial editable Pomodoro durations.
+    ///   - pomodoroSession: Active Pomodoro session, if one exists.
+    ///   - pomodoroRemainingSeconds: Remaining seconds in the active Pomodoro block.
+    ///   - savePomodoroDurations: Saves edited Pomodoro durations.
+    ///   - startTimer: Starts a background timer.
+    ///   - startPomodoro: Starts a Pomodoro session.
+    ///   - togglePomodoroPause: Toggles pause for the active Pomodoro block.
+    ///   - skipPomodoroBlock: Skips the active Pomodoro block.
+    ///   - stopPomodoro: Stops the active Pomodoro session.
     init(
         screenSize: CGSize,
-        backgroundTimers: BackgroundTimerCoordinator,
-        pomodoroPreferences: PomodoroPreferencesStore,
-        hudController: HUDController,
-        initialMode: TimerHUDMode = .timer
+        initialMode: TimerHUDMode = .timer,
+        initialPomodoroDurations: PomodoroDurations,
+        pomodoroSession: PomodoroSession?,
+        pomodoroRemainingSeconds: TimeInterval,
+        savePomodoroDurations: @escaping (PomodoroDurations) -> Void,
+        startTimer: @escaping (Int) -> Bool,
+        startPomodoro: @escaping (PomodoroDurations) -> Bool,
+        togglePomodoroPause: @escaping () -> Void,
+        skipPomodoroBlock: @escaping () -> Void,
+        stopPomodoro: @escaping () -> Void
     ) {
         self.screenSize = screenSize
-        self.backgroundTimers = backgroundTimers
-        self.pomodoroPreferences = pomodoroPreferences
-        self.hudController = hudController
+        self.pomodoroSession = pomodoroSession
+        self.pomodoroRemainingSeconds = pomodoroRemainingSeconds
+        self.savePomodoroDurations = savePomodoroDurations
+        startTimerAction = startTimer
+        startPomodoroAction = startPomodoro
+        self.togglePomodoroPause = togglePomodoroPause
+        self.skipPomodoroBlock = skipPomodoroBlock
+        self.stopPomodoro = stopPomodoro
         _interactionState = State(
             initialValue: TimerHUDInteractionState(
                 mode: initialMode,
-                pomodoroDurations: pomodoroPreferences.durations
+                pomodoroDurations: initialPomodoroDurations
             )
         )
     }
@@ -403,17 +371,16 @@ struct TimerHUDView: View {
                 )
                 .timerHUDLeadingModeTransition()
             case .pomodoro:
-                if let pomodoroSession = backgroundTimers.pomodoroSession, !justStartedPomodoro {
+                if let pomodoroSession, !justStartedPomodoro {
                     ActivePomodoroHUDModeView(
                         session: pomodoroSession,
-                        remainingSeconds: backgroundTimers.pomodoroRemainingSeconds(),
+                        remainingSeconds: pomodoroRemainingSeconds,
                         durations: pomodoroDurationBinding,
                         hoverField: interactionState.hoveredPomodoroField,
                         setHoveredField: setHoveredPomodoroField,
-                        setFocusedField: setFocusedPomodoroField,
-                        togglePause: backgroundTimers.togglePomodoroPause,
-                        skip: backgroundTimers.skipPomodoroBlock,
-                        stop: backgroundTimers.stopPomodoro,
+                        togglePause: togglePomodoroPause,
+                        skip: skipPomodoroBlock,
+                        stop: stopPomodoro,
                     )
                     .timerHUDTrailingModeTransition()
                 } else {
@@ -421,7 +388,6 @@ struct TimerHUDView: View {
                         durations: pomodoroDurationBinding,
                         hoverField: interactionState.hoveredPomodoroField,
                         setHoveredField: setHoveredPomodoroField,
-                        setFocusedField: setFocusedPomodoroField,
                         startPomodoro: startPomodoro
                     )
                     .timerHUDTrailingModeTransition()
@@ -429,7 +395,6 @@ struct TimerHUDView: View {
             }
         }
         .onAppear {
-            interactionState.pomodoroDurations = pomodoroPreferences.durations
             updateSizeOverride()
         }
         .onDisappear {
@@ -441,14 +406,10 @@ struct TimerHUDView: View {
         .onChange(of: interactionState.hoveredPomodoroField) { _ in
             updateSizeOverride()
         }
-        .onChange(of: interactionState.focusedPomodoroField) { _ in
-            updateSizeOverride()
-        }
         .onChange(of: interactionState.pomodoroDurations) { durations in
-            pomodoroPreferences.save(durations)
-            backgroundTimers.updatePomodoroDurations(durations)
+            savePomodoroDurations(durations)
         }
-        .onChange(of: backgroundTimers.pomodoroSession) { _ in
+        .onChange(of: pomodoroSession) { _ in
             updateSizeOverride()
         }
         .onReceive(hudMessages.messages) { message in
@@ -460,11 +421,12 @@ struct TimerHUDView: View {
     /// - Parameter targetedMessage: The message and destination HUD identifier.
     private func receiveHUDMessage(_ targetedMessage: TargetedHUDMessage) {
         guard targetedMessage.hudID == TimerHUDDefinition.hudID else { return }
+        guard let message = targetedMessage.message.timerHUDMessage else { return }
 
-        switch targetedMessage.message {
-        case .timerInput(let input):
+        switch message {
+        case .input(let input):
             receiveTimerHUDInput(input)
-        case .timerDefaultAction:
+        case .defaultAction:
             performDefaultAction()
         }
     }
@@ -525,21 +487,18 @@ struct TimerHUDView: View {
 
     /// Pomodoro field that is locked because it is currently running.
     private var lockedPomodoroField: PomodoroDurationField? {
-        backgroundTimers.pomodoroSession?.currentBlock.durationField
+        pomodoroSession?.currentBlock.durationField
     }
 
     /// Starts a background timer and closes the HUD.
     private func startTimer() {
-        guard backgroundTimers.startTimer(minutes: interactionState.timerDuration) != nil else { return }
-        _ = hudController.close(TimerHUDDefinition.hudID)
+        _ = startTimerAction(interactionState.timerDuration)
     }
 
     /// Starts a background Pomodoro and closes the HUD.
     private func startPomodoro() {
-        pomodoroPreferences.save(interactionState.pomodoroDurations)
+        guard startPomodoroAction(interactionState.pomodoroDurations) else { return }
         justStartedPomodoro = true
-        backgroundTimers.startPomodoro(durations: interactionState.pomodoroDurations)
-        _ = hudController.close(TimerHUDDefinition.hudID)
     }
 
     /// Runs the visible Return-style primary action for the mounted HUD mode.
@@ -548,7 +507,7 @@ struct TimerHUDView: View {
         case .timer:
             startTimer()
         case .pomodoro:
-            guard backgroundTimers.pomodoroSession == nil else { return }
+            guard pomodoroSession == nil else { return }
             startPomodoro()
         }
     }
@@ -559,14 +518,6 @@ struct TimerHUDView: View {
     ///   - isHovered: Whether the field is hovered.
     private func setHoveredPomodoroField(_ field: PomodoroDurationField, _ isHovered: Bool) {
         interactionState.setHover(field, isHovered: isHovered)
-    }
-
-    /// Records Pomodoro focus state.
-    /// - Parameters:
-    ///   - field: Field whose focus state changed.
-    ///   - isFocused: Whether the field is focused.
-    private func setFocusedPomodoroField(_ field: PomodoroDurationField, _ isFocused: Bool) {
-        interactionState.setFocus(field, isFocused: isFocused)
     }
 
     /// Updates the active panel size to match the mounted HUD mode.
@@ -602,8 +553,6 @@ private struct PomodoroHUDModeView: View {
     let hoverField: PomodoroDurationField?
     /// Hover-state callback for duration fields.
     let setHoveredField: (PomodoroDurationField, Bool) -> Void
-    /// Focus-state callback for duration fields.
-    let setFocusedField: (PomodoroDurationField, Bool) -> Void
     /// Starts the configured Pomodoro.
     let startPomodoro: () -> Void
 
@@ -620,8 +569,7 @@ private struct PomodoroHUDModeView: View {
                         PomodoroDurationInputRow(
                             field: field,
                             duration: durationBinding(for: field),
-                            setHoveredField: setHoveredField,
-                            setFocusedField: setFocusedField
+                            setHoveredField: setHoveredField
                         )
                     }
                 }
@@ -679,8 +627,6 @@ private struct ActivePomodoroHUDModeView: View {
     let hoverField: PomodoroDurationField?
     /// Hover-state callback for duration fields.
     let setHoveredField: (PomodoroDurationField, Bool) -> Void
-    /// Focus-state callback for duration fields.
-    let setFocusedField: (PomodoroDurationField, Bool) -> Void
     /// Toggles pause for the current block.
     let togglePause: () -> Void
     /// Skips the current block.
@@ -711,8 +657,7 @@ private struct ActivePomodoroHUDModeView: View {
                             PomodoroDurationInputRow(
                                 field: field,
                                 duration: durationBinding(for: field),
-                                setHoveredField: setHoveredField,
-                                setFocusedField: setFocusedField
+                                setHoveredField: setHoveredField
                             )
                         }
                     }
@@ -826,15 +771,9 @@ private struct PomodoroDurationInputRow: View {
     @Binding var duration: Int
     /// Hover-state callback.
     let setHoveredField: (PomodoroDurationField, Bool) -> Void
-    /// Focus-state callback.
-    let setFocusedField: (PomodoroDurationField, Bool) -> Void
 
-    /// Text currently shown while editing.
-    @State private var draft = ""
     /// Whether the pointer is currently over this input.
     @State private var isHovered = false
-    /// Whether the text field is currently focused.
-    @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -849,24 +788,20 @@ private struct PomodoroDurationInputRow: View {
                     .foregroundStyle(Color.white.opacity(contentOpacity))
                     .frame(width: TimerHUDStyle.pomodoroRowIconWidth, alignment: .center)
 
-                Text(draft)
+                Text(TimerHUDDurationFormatter.formatted(duration))
                     .drawingGroup()
                     .font(DriftTypography.hudFieldValue)
                     .monospacedDigit()
                     .foregroundStyle(Color.white.opacity(contentOpacity))
-                    .focused($isFocused)
-                    .onSubmit {
-                        commitDraft()
+                    .transaction { transaction in
+                        transaction.animation = nil
                     }
+                    .drawingGroup()
             }
             .padding(.horizontal, 9)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: TimerHUDStyle.pomodoroInputHeight)
-            .background(isFocused || isHovered ? Color.white.opacity(0.14) : Color.white.opacity(0.10))
-            .overlay {
-                Capsule()
-                    .stroke(isFocused ? Color.tick.opacity(0.85) : Color.clear, lineWidth: 2)
-            }
+            .background(isHovered ? Color.white.opacity(0.14) : Color.white.opacity(0.10))
             .clipShape(Capsule())
             .contentShape(Capsule())
             .overlay {
@@ -882,48 +817,16 @@ private struct PomodoroDurationInputRow: View {
                 setHoveredField(field, isHovered)
             }
         }
-        .onAppear {
-            draft = TimerHUDDurationFormatter.formatted(duration)
-        }
         .onDisappear {
             withAnimation {
                 setHoveredField(field, false)
             }
         }
-        .onChange(of: duration) { newDuration in
-            if !isFocused {
-                draft = TimerHUDDurationFormatter.formatted(newDuration)
-            }
-        }
-        .onChange(of: isFocused) { focused in
-            withAnimation {
-                setFocusedField(field, focused)
-            }
-            if focused {
-                draft = TimerHUDDurationFormatter.formatted(duration)
-            } else {
-                commitDraft()
-            }
-        }
     }
 
-    /// Text and icon opacity for default, hover, and focused states.
+    /// Text and icon opacity for default and hover states.
     private var contentOpacity: Double {
-        isHovered || isFocused ? 1 : 0.7
-    }
-
-    /// Commits the editable text, reverting invalid input.
-    private func commitDraft() {
-        guard let parsedDuration = TimerHUDDurationFormatter.parsed(draft) else {
-            draft = TimerHUDDurationFormatter.formatted(duration)
-            return
-        }
-
-        if parsedDuration != duration {
-            duration = parsedDuration
-            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
-        }
-        draft = TimerHUDDurationFormatter.formatted(duration)
+        isHovered ? 1 : 0.7
     }
 }
 

@@ -2,12 +2,23 @@ import Combine
 import CoreGraphics
 import Foundation
 
-/// Messages that can be delivered to a visible HUD.
-enum HUDMessage: Sendable {
-    /// Gesture-derived input for the Timer HUD.
-    case timerInput(TimerHUDInput)
-    /// Keyboard request to run the Timer HUD's visible Return-style default action.
-    case timerDefaultAction
+/// Message payload that can be delivered to a visible HUD.
+struct HUDMessage: Sendable {
+    /// HUD-specific message payload.
+    private let payload: any Sendable
+
+    /// Creates a HUD message from a HUD-specific payload.
+    /// - Parameter payload: Message payload interpreted by the destination HUD.
+    init<Payload: Sendable>(_ payload: Payload) {
+        self.payload = payload
+    }
+
+    /// Reads a HUD-specific payload if it matches the requested type.
+    /// - Parameter type: Payload type to read.
+    /// - Returns: The typed payload, or `nil` when this message carries another payload.
+    func payload<Payload: Sendable>(as type: Payload.Type = Payload.self) -> Payload? {
+        payload as? Payload
+    }
 }
 
 /// A HUD message paired with the destination HUD identifier.

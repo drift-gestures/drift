@@ -18,6 +18,31 @@ struct ListenerPipelineResult: Sendable {
     let activities: [ListenerActivity]
     /// Whether a listener currently owns the interaction exclusively.
     let didClaimInteraction: Bool
+
+    /// Creates an aggregate listener result.
+    /// - Parameters:
+    ///   - events: Semantic events emitted by effective listener decisions.
+    ///   - suppressions: Foreground-app event suppressions requested by listeners.
+    ///   - activities: Listener state transitions recorded for diagnostics.
+    ///   - didClaimInteraction: Whether a listener owns the interaction exclusively.
+    init(
+        events: [BackendEvent] = [],
+        suppressions: Set<SuppressionRequest> = [],
+        activities: [ListenerActivity] = [],
+        didClaimInteraction: Bool = false
+    ) {
+        self.events = events
+        self.suppressions = suppressions
+        self.activities = activities
+        self.didClaimInteraction = didClaimInteraction
+    }
+
+    /// Whether a local key-down should be consumed before it reaches AppKit responders.
+    /// - Parameter keyCode: Hardware key code to check.
+    /// - Returns: `true` when a listener claimed the key interaction or requested its suppression.
+    func consumesKeyPress(_ keyCode: UInt16) -> Bool {
+        didClaimInteraction || suppressions.containsKeyPress(keyCode)
+    }
 }
 
 /// Calls listener structs synchronously in registration order and manages exclusive claims.

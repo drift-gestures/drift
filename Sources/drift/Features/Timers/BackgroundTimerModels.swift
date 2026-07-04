@@ -139,7 +139,7 @@ struct PomodoroSession: Identifiable, Equatable, Sendable {
 /// Completion event emitted by the runtime coordinator.
 enum BackgroundTimerRuntimeEvent: Equatable, Sendable {
     /// A plain timer completed.
-    case timerCompleted(id: UUID)
+    case timerCompleted(id: UUID, duration: TimeInterval)
     /// A Pomodoro block completed and the runtime advanced to the next block.
     case pomodoroBlockCompleted(sessionID: UUID, block: PomodoroBlockKind)
 }

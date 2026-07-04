@@ -80,10 +80,13 @@ final class BackgroundTimerCoordinator: ObservableObject {
 
     /// Starts or replaces the active Pomodoro session.
     /// - Parameter durations: Block durations captured from setup.
-    func startPomodoro(durations: PomodoroDurations) {
-        guard durations.focus > 0 else { return }
+    /// - Returns: `true` when a Pomodoro session was started.
+    @discardableResult
+    func startPomodoro(durations: PomodoroDurations) -> Bool {
+        guard durations.focus > 0 else { return false }
         pomodoroSession = PomodoroSession(durations: durations, now: nowProvider())
         ensureTicker()
+        return true
     }
 
     /// Saves duration changes into the active Pomodoro for future blocks.
@@ -141,6 +144,19 @@ final class BackgroundTimerCoordinator: ObservableObject {
         timer.remainingSeconds(now: nowProvider())
     }
 
+    /// Returns remaining seconds for the running timer with the earliest deadline.
+    func nextTimerRemainingSeconds() -> TimeInterval? {
+        let now = nowProvider()
+        let runningTimers = timers.filter { !$0.isCompleted && !$0.isPaused }
+        if let nextRunningTimer = runningTimers.min(by: { $0.endsAt < $1.endsAt }) {
+            return nextRunningTimer.remainingSeconds(now: now)
+        }
+        return timers
+            .filter { !$0.isCompleted }
+            .map { $0.remainingSeconds(now: now) }
+            .min()
+    }
+
     /// Returns remaining seconds for the active Pomodoro block.
     func pomodoroRemainingSeconds() -> TimeInterval {
         pomodoroSession?.remainingSeconds(now: nowProvider()) ?? 0
@@ -159,7 +175,7 @@ final class BackgroundTimerCoordinator: ObservableObject {
                 continue
             }
             timers[index].isCompleted = true
-            emittedEvents.append(.timerCompleted(id: timers[index].id))
+            emittedEvents.append(.timerCompleted(id: timers[index].id, duration: timers[index].duration))
         }
 
         if var session = pomodoroSession,
@@ -185,11 +201,14 @@ final class BackgroundTimerCoordinator: ObservableObject {
             return
         }
 
-        ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.tick()
             }
         }
+        RunLoop.main.add(timer, forMode: .default)
+        RunLoop.main.add(timer, forMode: .menuEventTracking)
+        ticker = timer
     }
 
     /// Tears down ticking when no active work needs it.
@@ -221,4 +240,9 @@ final class BackgroundTimerCoordinator: ObservableObject {
         session.blockEndsAt = now.addingTimeInterval(PomodoroSession.seconds(for: nextBlock, durations: session.durations))
         session.pausedRemaining = nil
     }
+}
+
+private extension RunLoop.Mode {
+    /// AppKit menu tracking mode, used so countdowns keep refreshing while menus are open.
+    static let menuEventTracking = RunLoop.Mode("NSEventTrackingRunLoopMode")
 }

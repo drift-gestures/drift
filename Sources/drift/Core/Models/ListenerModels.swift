@@ -63,6 +63,18 @@ enum SuppressionRequest: Hashable, Sendable {
     case keyPress(keyCode: UInt16)
 }
 
+extension Set where Element == SuppressionRequest {
+    /// Checks whether this suppression set contains a key-press request for a key code.
+    /// - Parameter keyCode: The hardware key code to test.
+    /// - Returns: `true` when the set contains a matching key-press suppression.
+    func containsKeyPress(_ keyCode: UInt16) -> Bool {
+        contains { request in
+            guard case .keyPress(let requestedKeyCode) = request else { return false }
+            return requestedKeyCode == keyCode
+        }
+    }
+}
+
 /// Legacy coarse event-suppression categories.
 enum SuppressOtherAppEvents: Sendable {
     /// Suppress scroll-wheel events.

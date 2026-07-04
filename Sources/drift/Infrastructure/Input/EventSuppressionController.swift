@@ -445,18 +445,6 @@ final class EventSuppressionController: @unchecked Sendable {
     }
 }
 
-private extension Set where Element == SuppressionRequest {
-    /// Checks whether this suppression set contains a key-press request for a key code.
-    /// - Parameter keyCode: The hardware key code to test.
-    /// - Returns: `true` when the set contains a matching key-press suppression.
-    func containsKeyPress(_ keyCode: UInt16) -> Bool {
-        contains { request in
-            guard case .keyPress(let requestedKeyCode) = request else { return false }
-            return requestedKeyCode == keyCode
-        }
-    }
-}
-
 private extension KeyboardPressInteraction {
     /// Creates a normalized keyboard interaction from a CoreGraphics keyboard event.
     /// - Parameter event: The CoreGraphics event to translate.

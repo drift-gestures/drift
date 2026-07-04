@@ -97,8 +97,8 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertTrue(result.claimInteraction)
         XCTAssertTrue(hudController.isActive(TimerHUDDefinition.hudID))
         XCTAssertEqual(
-            hudStore.customStates[TimerHUDDefinition.hudID.rawValue]?.initialMode,
-            TimerHUDMode.pomodoro.rawValue
+            hudStore.customStates[TimerHUDDefinition.hudID.rawValue]?.payload(as: TimerHUDState.self)?.initialMode,
+            .pomodoro
         )
         guard case .timerHUDDidOpen = result.emittedEvents.first else {
             return XCTFail("Expected timer HUD activation request.")
@@ -402,7 +402,7 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertEqual(result.suppressions, [.keyPress(keyCode: KeyboardKey.return)])
         XCTAssertEqual(receivedMessages.count, 1)
         XCTAssertEqual(receivedMessages.first?.hudID, TimerHUDDefinition.hudID)
-        guard case .timerDefaultAction = receivedMessages.first?.message else {
+        guard case .defaultAction = receivedMessages.first?.message.timerHUDMessage else {
             cancellable.cancel()
             return XCTFail("Expected Return to request the Timer HUD default action.")
         }

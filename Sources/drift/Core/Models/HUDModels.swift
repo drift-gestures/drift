@@ -29,14 +29,33 @@ enum HUDSessionSource: Sendable {
 
 /// Per-HUD state stored by `HUDStore`.
 struct HUDState: Sendable {
-    /// Optional initial mode identifier interpreted by HUD-specific content.
-    var initialMode: String?
+    /// HUD-specific state payload.
+    private let payload: (any Sendable)?
 
-    /// Creates HUD state.
-    /// - Parameter initialMode: Optional initial mode identifier interpreted by the destination HUD.
-    init(initialMode: String? = nil) {
-        self.initialMode = initialMode
+    /// Creates empty HUD state.
+    init() {
+        payload = nil
     }
+
+    /// Creates HUD state with a HUD-specific payload.
+    /// - Parameter payload: State value interpreted by the destination HUD.
+    init<Payload: Sendable>(_ payload: Payload) {
+        self.payload = payload
+    }
+
+    /// Reads a HUD-specific payload if it matches the requested type.
+    /// - Parameter type: Payload type to read.
+    /// - Returns: The typed payload, or `nil` when this state carries another payload.
+    func payload<Payload: Sendable>(as type: Payload.Type = Payload.self) -> Payload? {
+        payload as? Payload
+    }
+}
+
+/// Runtime service that can be required by HUD definitions but owned by the app.
+@MainActor
+protocol HUDBackgroundWorker: AnyObject {
+    /// Starts app-lifecycle work after launch.
+    func applicationDidFinishLaunching()
 }
 
 /// Runtime information used to size and position HUD windows.

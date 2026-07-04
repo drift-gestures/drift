@@ -125,9 +125,9 @@ final class HUDController: @unchecked Sendable {
 
     /// Schedules main-actor rendering state to converge to the current synchronous state.
     private func syncStoreToCurrentSession() {
-        let session = currentSession
         Task { @MainActor [weak self] in
             guard let self else { return }
+            let session = self.currentSession
             if let session {
                 self.hudStore.setCustomState(session.state, for: session.id.rawValue)
             }

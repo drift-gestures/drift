@@ -49,9 +49,9 @@ final class TimerAlertCenter: NSObject, UNUserNotificationCenterDelegate {
     /// - Parameter event: Runtime completion event.
     func handle(_ event: BackgroundTimerRuntimeEvent) {
         switch event {
-        case .timerCompleted(let id):
+        case .timerCompleted(let id, let duration):
             playLoopingTimerSound()
-            postTimerNotification(id: id)
+            postTimerNotification(id: id, duration: duration)
         case .pomodoroBlockCompleted(_, let block):
             playShortPomodoroSound()
             postPomodoroNotification(block: block)
@@ -145,12 +145,12 @@ final class TimerAlertCenter: NSObject, UNUserNotificationCenterDelegate {
     }
 
     /// Posts a notification for a completed plain timer.
-    private func postTimerNotification(id: UUID) {
+    private func postTimerNotification(id: UUID, duration: TimeInterval) {
         deliver(
             identifier: Self.timerNotificationPrefix + id.uuidString,
             payload: TimerNotificationPayload(
                 title: "Timer",
-                body: "Timer finished.",
+                body: "\(TimerHUDDurationFormatter.formattedSeconds(duration)) timer finished.",
                 categoryIdentifier: Self.timerCategory
             )
         )

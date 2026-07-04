@@ -13,7 +13,7 @@ final class BackgroundTimerCoordinatorTests: XCTestCase {
         now = now.addingTimeInterval(61)
         coordinator.tick()
 
-        XCTAssertEqual(events, [.timerCompleted(id: try XCTUnwrap(id))])
+        XCTAssertEqual(events, [.timerCompleted(id: try XCTUnwrap(id), duration: 60)])
         XCTAssertEqual(coordinator.timers.count, 1)
         XCTAssertTrue(try XCTUnwrap(coordinator.timers.first).isCompleted)
 
@@ -43,7 +43,32 @@ final class BackgroundTimerCoordinatorTests: XCTestCase {
         now = now.addingTimeInterval(31)
         coordinator.tick()
 
-        XCTAssertEqual(events, [.timerCompleted(id: id)])
+        XCTAssertEqual(events, [.timerCompleted(id: id, duration: 60)])
+    }
+
+    func testNextTimerRemainingSecondsUsesEarliestUnfinishedTimer() {
+        var now = Date(timeIntervalSinceReferenceDate: 2_500)
+        let coordinator = BackgroundTimerCoordinator(nowProvider: { now })
+
+        _ = coordinator.startTimer(minutes: 10)
+        _ = coordinator.startTimer(minutes: 3)
+        now = now.addingTimeInterval(65)
+
+        XCTAssertEqual(coordinator.nextTimerRemainingSeconds(), 115)
+    }
+
+    func testNextTimerRemainingSecondsUsesRunningTimerBeforePausedTimer() throws {
+        var now = Date(timeIntervalSinceReferenceDate: 2_700)
+        let coordinator = BackgroundTimerCoordinator(nowProvider: { now })
+
+        let pausedID = try XCTUnwrap(coordinator.startTimer(minutes: 1))
+        now = now.addingTimeInterval(55)
+        coordinator.toggleTimerPause(id: pausedID)
+
+        _ = coordinator.startTimer(minutes: 1)
+        now = now.addingTimeInterval(10)
+
+        XCTAssertEqual(coordinator.nextTimerRemainingSeconds(), 50)
     }
 
     func testPomodoroUsesClassicFourFocusCycle() throws {

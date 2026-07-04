@@ -57,7 +57,12 @@ final class TimerMenuBarController: NSObject, NSMenuDelegate {
         item.button?.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Timers")
         item.button?.image?.isTemplate = true
         item.button?.title = " " + timerStatusTitle
-        item.menu = makeTimerMenu()
+        if let menu = item.menu,
+           timerMenuMatchesCurrentTimers(menu) {
+            updateTimerMenu(menu)
+        } else {
+            item.menu = makeTimerMenu()
+        }
     }
 
     /// Creates, updates, or removes the Pomodoro status item.
@@ -78,19 +83,22 @@ final class TimerMenuBarController: NSObject, NSMenuDelegate {
         )
         item.button?.image?.isTemplate = true
         item.button?.title = " " + formatSeconds(coordinator.pomodoroRemainingSeconds())
-        item.menu = makePomodoroMenu(session: session)
+        if let menu = item.menu {
+            updatePomodoroMenu(menu, session: session)
+        } else {
+            item.menu = makePomodoroMenu(session: session)
+        }
     }
 
     /// Title shown in the plain timer status item.
     private var timerStatusTitle: String {
-        let activeTimers = coordinator.timers.filter { !$0.isCompleted }
-        if activeTimers.count > 1 {
-            return "(\(activeTimers.count))"
+        if let seconds = coordinator.nextTimerRemainingSeconds() {
+            let title = formatSeconds(seconds)
+            let unfinishedTimerCount = coordinator.timers.filter { !$0.isCompleted }.count
+            guard unfinishedTimerCount > 1 else { return title }
+            return "\(title) (\(unfinishedTimerCount))"
         }
-        guard let timer = activeTimers.first ?? coordinator.timers.first else {
-            return ""
-        }
-        return timer.isCompleted ? "Done" : formatSeconds(coordinator.remainingSeconds(for: timer))
+        return coordinator.timers.contains { $0.isCompleted } ? "Done" : ""
     }
 
     /// Builds the timer dropdown menu.
@@ -102,34 +110,26 @@ final class TimerMenuBarController: NSObject, NSMenuDelegate {
             let remaining = coordinator.remainingSeconds(for: timer)
             let title = timer.isCompleted ? "Timer finished" : "Timer \(formatSeconds(remaining))"
             let titleItem = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            titleItem.identifier = timerTitleIdentifier(for: timer.id)
             titleItem.isEnabled = false
             menu.addItem(titleItem)
 
-            if !timer.isCompleted {
-                let pauseItem = NSMenuItem(
-                    title: timer.isPaused ? "Play" : "Pause",
-                    action: #selector(toggleTimerPause(_:)),
-                    keyEquivalent: ""
-                )
-                pauseItem.target = self
-                pauseItem.representedObject = timer.id.uuidString
-                menu.addItem(pauseItem)
-            } else {
-                let repeatItem = NSMenuItem(
-                    title: "Repeat",
-                    action: #selector(repeatTimer(_:)),
-                    keyEquivalent: ""
-                )
-                repeatItem.target = self
-                repeatItem.representedObject = timer.id.uuidString
-                menu.addItem(repeatItem)
-            }
+            let primaryItem = NSMenuItem(
+                title: timerPrimaryActionTitle(for: timer),
+                action: timerPrimaryAction(for: timer),
+                keyEquivalent: ""
+            )
+            primaryItem.identifier = timerPrimaryActionIdentifier(for: timer.id)
+            primaryItem.target = self
+            primaryItem.representedObject = timer.id.uuidString
+            menu.addItem(primaryItem)
 
             let cancelItem = NSMenuItem(
                 title: timer.isCompleted ? "Dismiss" : "Cancel",
                 action: #selector(cancelTimer(_:)),
                 keyEquivalent: ""
             )
+            cancelItem.identifier = timerCancelActionIdentifier(for: timer.id)
             cancelItem.target = self
             cancelItem.representedObject = timer.id.uuidString
             menu.addItem(cancelItem)
@@ -152,6 +152,7 @@ final class TimerMenuBarController: NSObject, NSMenuDelegate {
             action: nil,
             keyEquivalent: ""
         )
+        titleItem.identifier = Self.pomodoroTitleIdentifier
         titleItem.isEnabled = false
         menu.addItem(titleItem)
         menu.addItem(.separator())
@@ -161,6 +162,7 @@ final class TimerMenuBarController: NSObject, NSMenuDelegate {
             action: #selector(togglePomodoroPause),
             keyEquivalent: ""
         )
+        pauseItem.identifier = Self.pomodoroPauseIdentifier
         pauseItem.target = self
         menu.addItem(pauseItem)
 
@@ -182,6 +184,46 @@ final class TimerMenuBarController: NSObject, NSMenuDelegate {
     /// Refreshes realtime menu titles before a menu opens.
     func menuWillOpen(_ menu: NSMenu) {
         syncStatusItems()
+    }
+
+    /// Updates an existing timer menu while preserving the displayed menu object.
+    /// - Parameter menu: Timer menu to update.
+    private func updateTimerMenu(_ menu: NSMenu) {
+        for timer in coordinator.timers {
+            if let titleItem = menu.item(withIdentifier: timerTitleIdentifier(for: timer.id)) {
+                let remaining = coordinator.remainingSeconds(for: timer)
+                titleItem.title = timer.isCompleted ? "Timer finished" : "Timer \(formatSeconds(remaining))"
+            }
+            if let primaryItem = menu.item(withIdentifier: timerPrimaryActionIdentifier(for: timer.id)) {
+                primaryItem.title = timerPrimaryActionTitle(for: timer)
+                primaryItem.action = timerPrimaryAction(for: timer)
+            }
+            if let cancelItem = menu.item(withIdentifier: timerCancelActionIdentifier(for: timer.id)) {
+                cancelItem.title = timer.isCompleted ? "Dismiss" : "Cancel"
+            }
+        }
+    }
+
+    /// Checks whether an existing timer menu still represents the current timer identities.
+    /// - Parameter menu: Timer menu to inspect.
+    /// - Returns: `true` when item titles can be updated in place.
+    private func timerMenuMatchesCurrentTimers(_ menu: NSMenu) -> Bool {
+        let menuIDs = Set(menu.items.compactMap(timerID(fromTitleIdentifier:)))
+        let currentIDs = Set(coordinator.timers.map(\.id))
+        return menuIDs == currentIDs
+    }
+
+    /// Updates an existing Pomodoro menu while preserving the displayed menu object.
+    /// - Parameters:
+    ///   - menu: Pomodoro menu to update.
+    ///   - session: Current Pomodoro session.
+    private func updatePomodoroMenu(_ menu: NSMenu, session: PomodoroSession) {
+        if let titleItem = menu.item(withIdentifier: Self.pomodoroTitleIdentifier) {
+            titleItem.title = "\(session.currentBlock.menuTitle) \(formatSeconds(coordinator.pomodoroRemainingSeconds()))"
+        }
+        if let pauseItem = menu.item(withIdentifier: Self.pomodoroPauseIdentifier) {
+            pauseItem.title = session.isPaused ? "Play" : "Pause"
+        }
     }
 
     /// Toggles one timer pause state.
@@ -247,5 +289,59 @@ final class TimerMenuBarController: NSObject, NSMenuDelegate {
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    /// Primary action title for a timer.
+    /// - Parameter timer: Timer represented by the menu item.
+    /// - Returns: User-facing action title.
+    private func timerPrimaryActionTitle(for timer: BackgroundTimerSession) -> String {
+        if timer.isCompleted { return "Repeat" }
+        return timer.isPaused ? "Play" : "Pause"
+    }
+
+    /// Primary action selector for a timer.
+    /// - Parameter timer: Timer represented by the menu item.
+    /// - Returns: Action selector to install on the menu item.
+    private func timerPrimaryAction(for timer: BackgroundTimerSession) -> Selector {
+        timer.isCompleted ? #selector(repeatTimer(_:)) : #selector(toggleTimerPause(_:))
+    }
+
+    /// Identifier for a timer title item.
+    private func timerTitleIdentifier(for id: UUID) -> NSUserInterfaceItemIdentifier {
+        NSUserInterfaceItemIdentifier("timer-title-\(id.uuidString)")
+    }
+
+    /// Identifier for a timer primary action item.
+    private func timerPrimaryActionIdentifier(for id: UUID) -> NSUserInterfaceItemIdentifier {
+        NSUserInterfaceItemIdentifier("timer-primary-\(id.uuidString)")
+    }
+
+    /// Identifier for a timer cancel action item.
+    private func timerCancelActionIdentifier(for id: UUID) -> NSUserInterfaceItemIdentifier {
+        NSUserInterfaceItemIdentifier("timer-cancel-\(id.uuidString)")
+    }
+
+    /// Reads a timer ID from a timer title item identifier.
+    private func timerID(fromTitleIdentifier item: NSMenuItem) -> UUID? {
+        guard let rawValue = item.identifier?.rawValue,
+              rawValue.hasPrefix("timer-title-")
+        else {
+            return nil
+        }
+        return UUID(uuidString: String(rawValue.dropFirst("timer-title-".count)))
+    }
+
+    /// Identifier for the Pomodoro title item.
+    private static let pomodoroTitleIdentifier = NSUserInterfaceItemIdentifier("pomodoro-title")
+    /// Identifier for the Pomodoro pause/play item.
+    private static let pomodoroPauseIdentifier = NSUserInterfaceItemIdentifier("pomodoro-pause")
+}
+
+private extension NSMenu {
+    /// Finds the first menu item with a matching identifier.
+    /// - Parameter identifier: Item identifier to find.
+    /// - Returns: Matching menu item, if present.
+    func item(withIdentifier identifier: NSUserInterfaceItemIdentifier) -> NSMenuItem? {
+        items.first { $0.identifier == identifier }
     }
 }
