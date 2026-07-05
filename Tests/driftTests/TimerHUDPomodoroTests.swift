@@ -2,20 +2,10 @@ import XCTest
 @testable import drift
 
 final class TimerHUDPomodoroTests: XCTestCase {
-    func testDurationFormatterAcceptsMinuteAndClockInput() {
-        XCTAssertEqual(TimerHUDDurationFormatter.parsed("25"), 25)
-        XCTAssertEqual(TimerHUDDurationFormatter.parsed("25:00"), 25)
-        XCTAssertEqual(TimerHUDDurationFormatter.parsed("05:00"), 5)
-        XCTAssertEqual(TimerHUDDurationFormatter.parsed("1000"), 100)
-        XCTAssertEqual(TimerHUDDurationFormatter.parsed("-3"), 0)
-        XCTAssertNil(TimerHUDDurationFormatter.parsed(""))
-        XCTAssertNil(TimerHUDDurationFormatter.parsed("abc"))
-        XCTAssertNil(TimerHUDDurationFormatter.parsed("10:90"))
-        XCTAssertNil(TimerHUDDurationFormatter.parsed("1:2:3"))
-        XCTAssertNil(TimerHUDDurationFormatter.parsed("10:"))
-        XCTAssertNil(TimerHUDDurationFormatter.parsed(":10"))
-        XCTAssertNil(TimerHUDDurationFormatter.parsed("--3"))
-        XCTAssertNil(TimerHUDDurationFormatter.parsed("3-1"))
+    func testDurationFormatterClampsFormattedMinutes() {
+        XCTAssertEqual(TimerHUDDurationFormatter.formatted(25), "25:00")
+        XCTAssertEqual(TimerHUDDurationFormatter.formatted(1000), "100:00")
+        XCTAssertEqual(TimerHUDDurationFormatter.formatted(-3), "00:00")
     }
 
     func testScrollSensitivityConvertsMagnitudeToMinutes() {
@@ -42,7 +32,6 @@ final class TimerHUDPomodoroTests: XCTestCase {
 
         XCTAssertEqual(state.mode, .pomodoro)
         XCTAssertNil(state.hoveredPomodoroField)
-        XCTAssertNil(state.focusedPomodoroField)
     }
 
     func testPomodoroModeIgnoresVerticalScrollWithoutHoveredInput() {
@@ -54,18 +43,6 @@ final class TimerHUDPomodoroTests: XCTestCase {
         XCTAssertEqual(state.mode, .pomodoro)
         XCTAssertEqual(state.timerDuration, 30)
         XCTAssertEqual(state.pomodoroDurations.focus, 25)
-    }
-
-    func testPomodoroModeIgnoresFocusedInputWhenItIsNotHovered() {
-        var state = TimerHUDInteractionState(mode: .pomodoro, timerDuration: 30)
-        state.setFocus(.shortBreak, isFocused: true)
-
-        let didUpdate = state.receivePomodoroInput(scrollAmount: 10)
-
-        XCTAssertFalse(didUpdate)
-        XCTAssertEqual(state.pomodoroDurations.shortBreak, 5)
-        XCTAssertNil(state.hoveredPomodoroField)
-        XCTAssertEqual(state.focusedPomodoroField, .shortBreak)
     }
 
     func testPomodoroModeVerticalScrollUpdatesHoveredInputOnly() {
@@ -82,6 +59,16 @@ final class TimerHUDPomodoroTests: XCTestCase {
         XCTAssertEqual(state.pomodoroDurations.longBreak, 15)
     }
 
+    func testPomodoroModeDoesNotUpdateLockedActiveField() {
+        var state = TimerHUDInteractionState(mode: .pomodoro)
+        state.setHover(.focus, isHovered: true)
+
+        let didUpdate = state.receivePomodoroInput(scrollAmount: 10, lockedField: .focus)
+
+        XCTAssertFalse(didUpdate)
+        XCTAssertEqual(state.pomodoroDurations.focus, 25)
+    }
+
     func testPomodoroModeLeftScrollSwitchesBackToTimer() {
         var state = TimerHUDInteractionState(mode: .pomodoro)
         state.setHover(.focus, isHovered: true)
@@ -90,7 +77,6 @@ final class TimerHUDPomodoroTests: XCTestCase {
 
         XCTAssertEqual(state.mode, .timer)
         XCTAssertNil(state.hoveredPomodoroField)
-        XCTAssertNil(state.focusedPomodoroField)
     }
 
     private func input(

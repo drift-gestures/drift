@@ -12,7 +12,7 @@ final class HUDWindowPresenter {
     /// Registered HUD definitions keyed by identifier.
     private let definitions: [HUDID: AnyHUDDefinition]
     /// Receiver used to send HUD-originated interactions back into the input pipeline.
-    private let interactionReceiver: @MainActor (Interaction) -> Void
+    private let interactionReceiver: @MainActor (Interaction) -> ListenerPipelineResult
     /// Currently displayed HUD panel and its identifier.
     private var activeWindow: (id: HUDID, panel: NSPanel)?
     /// Subscription to HUD visibility changes.
@@ -36,7 +36,7 @@ final class HUDWindowPresenter {
         hudStore: HUDStore,
         hudMessages: HUDMessageBus,
         definitions: [AnyHUDDefinition],
-        interactionReceiver: @escaping @MainActor (Interaction) -> Void
+        interactionReceiver: @escaping @MainActor (Interaction) -> ListenerPipelineResult
     ) {
         self.hudStore = hudStore
         self.hudMessages = hudMessages
@@ -191,17 +191,18 @@ final class HUDWindowPresenter {
         }
 
         localKeyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard Thread.isMainThread else { return event }
             let keyPress = KeyboardPressInteraction(event: event)
-            Task { @MainActor [weak self] in
-                self?.interactionReceiver(.keyboardPress(keyPress))
+            let result = MainActor.assumeIsolated {
+                self?.interactionReceiver(.keyboardPress(keyPress)) ?? ListenerPipelineResult()
             }
-            return keyPress.keyCode == KeyboardKey.escape ? nil : event
+            return result.consumesKeyPress(keyPress.keyCode) ? nil : event
         }
 
         globalKeyboardMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             let keyPress = KeyboardPressInteraction(event: event)
             Task { @MainActor [weak self] in
-                self?.interactionReceiver(.keyboardPress(keyPress))
+                _ = self?.interactionReceiver(.keyboardPress(keyPress))
             }
         }
     }
@@ -237,7 +238,7 @@ final class HUDWindowPresenter {
         else {
             return
         }
-        interactionReceiver(
+        _ = interactionReceiver(
             .clickOutside(ClickOutsideInteraction(hudID: activeWindow.id, screenLocation: location))
         )
     }

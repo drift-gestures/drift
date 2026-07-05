@@ -1,3 +1,4 @@
+import Combine
 import CoreGraphics
 import XCTest
 @testable import drift
@@ -70,6 +71,35 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertTrue(result.claimInteraction)
         XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .vertical), .scroll(axis: .horizontal)]))
         XCTAssertEqual(result.emittedEvents.count, 1)
+        guard case .timerHUDDidOpen = result.emittedEvents.first else {
+            return XCTFail("Expected timer HUD activation request.")
+        }
+    }
+
+    @MainActor
+    func testBottomEdgeUpSwipeFurtherRightOpensPomodoroMode() async {
+        let visibilityState = HUDVisibilityState()
+        let testingState = HUDTestingState()
+        let hudStore = HUDStore(visibilityState: visibilityState)
+        let hudMessages = HUDMessageBus()
+        let hudController = HUDController(
+            hudStore: hudStore,
+            hudMessages: hudMessages,
+            visibilityState: visibilityState,
+            testingState: testingState
+        )
+        var listener = TimerHUDInputListener(hudController: hudController)
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.2, y: 0.1), frame: 1))
+        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.2, y: 0.31), frame: 2))
+        await Task.yield()
+
+        XCTAssertTrue(result.claimInteraction)
+        XCTAssertTrue(hudController.isActive(TimerHUDDefinition.hudID))
+        XCTAssertEqual(
+            hudStore.customStates[TimerHUDDefinition.hudID.rawValue]?.payload(as: TimerHUDState.self)?.initialMode,
+            .pomodoro
+        )
         guard case .timerHUDDidOpen = result.emittedEvents.first else {
             return XCTFail("Expected timer HUD activation request.")
         }
@@ -281,6 +311,35 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertTrue(heldScrollResult.suppressions.isEmpty)
     }
 
+    @MainActor
+    func testProgrammaticTimerHUDCloseResetsListenerForNextActivationGesture() {
+        let hudController = makeHUDController()
+        var listener = TimerHUDInputListener(hudController: hudController)
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
+        let opened = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 2))
+        XCTAssertTrue(opened.claimInteraction)
+        XCTAssertTrue(hudController.isActive(TimerHUDDefinition.hudID))
+
+        hudController.close(TimerHUDDefinition.hudID)
+        let releaseAfterExternalClose = listener.onInteraction(snapshot(.ended, center: CGPoint(x: 0.1, y: 0.31), frame: 3))
+        XCTAssertFalse(releaseAfterExternalClose.claimInteraction)
+        if case .waiting = listener.gestureStatus {
+        } else {
+            XCTFail("Expected programmatic HUD close to reset listener to waiting.")
+        }
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 4))
+        let reopened = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 5))
+
+        XCTAssertTrue(reopened.claimInteraction)
+        XCTAssertTrue(hudController.isActive(TimerHUDDefinition.hudID))
+        XCTAssertEqual(reopened.emittedEvents.count, 1)
+        guard case .timerHUDDidOpen = reopened.emittedEvents.first else {
+            return XCTFail("Expected Timer HUD to reopen after programmatic close.")
+        }
+    }
+
     func testEscapeDuringTimerHUDGestureRequestsCloseAndSuppressesKeyPress() {
         var listener = TimerHUDInputListener()
 
@@ -316,6 +375,65 @@ final class ListenerArchitectureTests: XCTestCase {
         guard case .timerHUDDidClose = result.emittedEvents.first else {
             return XCTFail("Expected Escape to close visible Timer HUD.")
         }
+    }
+
+    @MainActor
+    func testReturnRequestsVisibleTimerHUDDefaultAction() async {
+        let visibilityState = HUDVisibilityState()
+        let testingState = HUDTestingState()
+        let hudStore = HUDStore(visibilityState: visibilityState)
+        let hudMessages = HUDMessageBus()
+        let hudController = HUDController(
+            hudStore: hudStore,
+            hudMessages: hudMessages,
+            visibilityState: visibilityState,
+            testingState: testingState
+        )
+        var receivedMessages: [TargetedHUDMessage] = []
+        let cancellable = hudMessages.messages.sink { message in
+            receivedMessages.append(message)
+        }
+        hudController.open(TimerHUDDefinition.hudID, source: .testing)
+        var listener = TimerHUDInputListener(hudController: hudController)
+
+        let result = listener.onInteraction(.keyboardPress(returnPress))
+        await Task.yield()
+
+        XCTAssertEqual(result.suppressions, [.keyPress(keyCode: KeyboardKey.return)])
+        XCTAssertEqual(receivedMessages.count, 1)
+        XCTAssertEqual(receivedMessages.first?.hudID, TimerHUDDefinition.hudID)
+        guard case .defaultAction = receivedMessages.first?.message.timerHUDMessage else {
+            cancellable.cancel()
+            return XCTFail("Expected Return to request the Timer HUD default action.")
+        }
+        cancellable.cancel()
+    }
+
+    @MainActor
+    func testModifiedReturnDoesNotRequestTimerHUDDefaultAction() async {
+        let visibilityState = HUDVisibilityState()
+        let testingState = HUDTestingState()
+        let hudStore = HUDStore(visibilityState: visibilityState)
+        let hudMessages = HUDMessageBus()
+        let hudController = HUDController(
+            hudStore: hudStore,
+            hudMessages: hudMessages,
+            visibilityState: visibilityState,
+            testingState: testingState
+        )
+        var receivedMessages: [TargetedHUDMessage] = []
+        let cancellable = hudMessages.messages.sink { message in
+            receivedMessages.append(message)
+        }
+        hudController.open(TimerHUDDefinition.hudID, source: .testing)
+        var listener = TimerHUDInputListener(hudController: hudController)
+
+        let result = listener.onInteraction(.keyboardPress(modifiedReturnPress))
+        await Task.yield()
+
+        XCTAssertTrue(result.suppressions.isEmpty)
+        XCTAssertTrue(receivedMessages.isEmpty)
+        cancellable.cancel()
     }
 
     func testUpSwipeAwayFromBottomLeftDoesNotActivateTimerHUD() {
@@ -389,6 +507,22 @@ final class ListenerArchitectureTests: XCTestCase {
             keyCode: KeyboardKey.escape,
             characters: nil,
             modifiers: []
+        )
+    }
+
+    private var returnPress: KeyboardPressInteraction {
+        KeyboardPressInteraction(
+            keyCode: KeyboardKey.return,
+            characters: "\r",
+            modifiers: []
+        )
+    }
+
+    private var modifiedReturnPress: KeyboardPressInteraction {
+        KeyboardPressInteraction(
+            keyCode: KeyboardKey.return,
+            characters: "\r",
+            modifiers: [.shift]
         )
     }
 

@@ -31,6 +31,14 @@
 		100000000000000000000029 /* HUDTestingSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000029 /* HUDTestingSupport.swift */; };
 		10000000000000000000002A /* TimerHUDInputListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002A /* TimerHUDInputListener.swift */; };
 		10000000000000000000002B /* HUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002B /* HUDController.swift */; };
+		10000000000000000000002C /* BackgroundTimerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002C /* BackgroundTimerModels.swift */; };
+		10000000000000000000002D /* BackgroundTimerCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002D /* BackgroundTimerCoordinator.swift */; };
+		10000000000000000000002E /* PomodoroPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002E /* PomodoroPreferencesStore.swift */; };
+		10000000000000000000002F /* TimerAlertCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002F /* TimerAlertCenter.swift */; };
+		100000000000000000000030 /* TimerMenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000030 /* TimerMenuBarController.swift */; };
+		100000000000000000000031 /* TimerBackgroundWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000031 /* TimerBackgroundWorker.swift */; };
+		100000000000000000000032 /* HUDRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000032 /* HUDRegistry.swift */; };
+		100000000000000000000033 /* AppBackgroundWorkers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000033 /* AppBackgroundWorkers.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -62,6 +70,14 @@
 		200000000000000000000029 /* HUDTestingSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDTestingSupport.swift; sourceTree = "<group>"; };
 		20000000000000000000002A /* TimerHUDInputListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerHUDInputListener.swift; sourceTree = "<group>"; };
 		20000000000000000000002B /* HUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDController.swift; sourceTree = "<group>"; };
+		20000000000000000000002C /* BackgroundTimerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTimerModels.swift; sourceTree = "<group>"; };
+		20000000000000000000002D /* BackgroundTimerCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTimerCoordinator.swift; sourceTree = "<group>"; };
+		20000000000000000000002E /* PomodoroPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroPreferencesStore.swift; sourceTree = "<group>"; };
+		20000000000000000000002F /* TimerAlertCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlertCenter.swift; sourceTree = "<group>"; };
+		200000000000000000000030 /* TimerMenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerMenuBarController.swift; sourceTree = "<group>"; };
+		200000000000000000000031 /* TimerBackgroundWorker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerBackgroundWorker.swift; sourceTree = "<group>"; };
+		200000000000000000000032 /* HUDRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDRegistry.swift; sourceTree = "<group>"; };
+		200000000000000000000033 /* AppBackgroundWorkers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackgroundWorkers.swift; sourceTree = "<group>"; };
 		AE84834E2FE19DCA00446B38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -80,6 +96,7 @@
 		AE1483D42FF2F177008D484B /* Timer */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Timer; sourceTree = "<group>"; };
 		AE3C8F4D2FF5511E00EC474F /* assets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (AE3C8F512FF551FE00EC474F /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = assets; sourceTree = "<group>"; };
 		AE420A182FF7A7E50055C84A /* Utilities */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Utilities; sourceTree = "<group>"; };
+		AE420A492FF816470055C84A /* Styles */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Styles; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +127,7 @@
 			children = (
 				AE420A182FF7A7E50055C84A /* Utilities */,
 				400000000000000000000007 /* App */,
+				AE420A492FF816470055C84A /* Styles */,
 				400000000000000000000008 /* Core */,
 				40000000000000000000000C /* Features */,
 				400000000000000000000012 /* Infrastructure */,
@@ -155,6 +173,7 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000001 /* main.swift */,
+				200000000000000000000033 /* AppBackgroundWorkers.swift */,
 				200000000000000000000002 /* AppDelegate.swift */,
 			);
 			path = App;
@@ -203,6 +222,7 @@
 				400000000000000000000015 /* HUD */,
 				40000000000000000000000D /* Logging */,
 				40000000000000000000000E /* QuickActions */,
+				400000000000000000000017 /* Timers */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -275,6 +295,7 @@
 			isa = PBXGroup;
 			children = (
 				20000000000000000000002B /* HUDController.swift */,
+				200000000000000000000032 /* HUDRegistry.swift */,
 				200000000000000000000027 /* HUDStore.swift */,
 				200000000000000000000029 /* HUDTestingSupport.swift */,
 				200000000000000000000028 /* HUDWindowPresenter.swift */,
@@ -289,6 +310,19 @@
 				20000000000000000000002A /* TimerHUDInputListener.swift */,
 			);
 			path = Listeners;
+			sourceTree = "<group>";
+		};
+		400000000000000000000017 /* Timers */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000002D /* BackgroundTimerCoordinator.swift */,
+				20000000000000000000002C /* BackgroundTimerModels.swift */,
+				20000000000000000000002E /* PomodoroPreferencesStore.swift */,
+				20000000000000000000002F /* TimerAlertCenter.swift */,
+				200000000000000000000031 /* TimerBackgroundWorker.swift */,
+				200000000000000000000030 /* TimerMenuBarController.swift */,
+			);
+			path = Timers;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -309,6 +343,7 @@
 			fileSystemSynchronizedGroups = (
 				AE1483D42FF2F177008D484B /* Timer */,
 				AE420A182FF7A7E50055C84A /* Utilities */,
+				AE420A492FF816470055C84A /* Styles */,
 			);
 			name = drift;
 			productName = drift;
@@ -364,6 +399,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				100000000000000000000001 /* main.swift in Sources */,
+				100000000000000000000033 /* AppBackgroundWorkers.swift in Sources */,
 				100000000000000000000002 /* AppDelegate.swift in Sources */,
 				100000000000000000000003 /* GestureModels.swift in Sources */,
 				100000000000000000000004 /* ActivityLogStore.swift in Sources */,
@@ -386,6 +422,13 @@
 				100000000000000000000029 /* HUDTestingSupport.swift in Sources */,
 				10000000000000000000002A /* TimerHUDInputListener.swift in Sources */,
 				10000000000000000000002B /* HUDController.swift in Sources */,
+				100000000000000000000032 /* HUDRegistry.swift in Sources */,
+				10000000000000000000002C /* BackgroundTimerModels.swift in Sources */,
+				10000000000000000000002D /* BackgroundTimerCoordinator.swift in Sources */,
+				10000000000000000000002E /* PomodoroPreferencesStore.swift in Sources */,
+				10000000000000000000002F /* TimerAlertCenter.swift in Sources */,
+				100000000000000000000031 /* TimerBackgroundWorker.swift in Sources */,
+				100000000000000000000030 /* TimerMenuBarController.swift in Sources */,
 				100000000000000000000009 /* driftMultitouch.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -444,6 +487,8 @@
 					"-ldl",
 					"-framework",
 					CoreFoundation,
+					"-framework",
+					UserNotifications,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = local.drift.drift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -474,6 +519,8 @@
 					"-ldl",
 					"-framework",
 					CoreFoundation,
+					"-framework",
+					UserNotifications,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = local.drift.drift;
 				PRODUCT_NAME = "$(TARGET_NAME)";

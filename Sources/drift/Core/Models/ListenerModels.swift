@@ -63,6 +63,18 @@ enum SuppressionRequest: Hashable, Sendable {
     case keyPress(keyCode: UInt16)
 }
 
+extension Set where Element == SuppressionRequest {
+    /// Checks whether this suppression set contains a key-press request for a key code.
+    /// - Parameter keyCode: The hardware key code to test.
+    /// - Returns: `true` when the set contains a matching key-press suppression.
+    func containsKeyPress(_ keyCode: UInt16) -> Bool {
+        contains { request in
+            guard case .keyPress(let requestedKeyCode) = request else { return false }
+            return requestedKeyCode == keyCode
+        }
+    }
+}
+
 /// Legacy coarse event-suppression categories.
 enum SuppressOtherAppEvents: Sendable {
     /// Suppress scroll-wheel events.
@@ -101,6 +113,17 @@ struct KeyboardPressInteraction: Sendable {
 enum KeyboardKey {
     /// The macOS hardware key code for Escape.
     static let escape: UInt16 = 53
+    /// The macOS hardware key code for Return.
+    static let `return`: UInt16 = 36
+    /// The macOS hardware key code for keypad Enter.
+    static let keypadEnter: UInt16 = 76
+
+    /// Checks whether a key code should activate a default Return-style HUD action.
+    /// - Parameter keyCode: The hardware key code to test.
+    /// - Returns: `true` for Return and keypad Enter.
+    static func isReturn(_ keyCode: UInt16) -> Bool {
+        keyCode == Self.return || keyCode == Self.keypadEnter
+    }
 }
 
 /// A mouse click that occurred outside a displayed HUD window.

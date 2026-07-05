@@ -41,19 +41,28 @@ final class HUDController: @unchecked Sendable {
         return id
     }
 
+    /// The active HUD session, if one is open.
+    private var currentSession: HUDSession? {
+        lock.lock()
+        let session = activeSession
+        lock.unlock()
+        return session
+    }
+
     /// Opens a HUD when no different HUD is already active.
     /// - Parameters:
     ///   - id: The HUD identifier to open.
     ///   - source: The source responsible for the session.
+    ///   - state: Initial state to provide to the HUD content.
     /// - Returns: `true` when the requested HUD is now the active HUD.
     @discardableResult
-    func open(_ id: HUDID, source: HUDSessionSource) -> Bool {
+    func open(_ id: HUDID, source: HUDSessionSource, state: HUDState = HUDState()) -> Bool {
         lock.lock()
         if let activeSession, activeSession.id != id {
             lock.unlock()
             return false
         }
-        activeSession = HUDSession(id: id, source: source)
+        activeSession = HUDSession(id: id, source: source, state: state)
         visibilityState.setActiveHUDID(id)
         if source == .testing {
             testingState.setActiveHUDID(id)
@@ -118,7 +127,11 @@ final class HUDController: @unchecked Sendable {
     private func syncStoreToCurrentSession() {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            self.hudStore.setActiveHUDID(self.activeHUDID)
+            let session = self.currentSession
+            if let session {
+                self.hudStore.setCustomState(session.state, for: session.id.rawValue)
+            }
+            self.hudStore.setActiveHUDID(session?.id)
         }
     }
 }
@@ -129,4 +142,6 @@ private struct HUDSession: Sendable {
     let id: HUDID
     /// Source that opened the session.
     let source: HUDSessionSource
+    /// Initial state to provide to the HUD content.
+    let state: HUDState
 }

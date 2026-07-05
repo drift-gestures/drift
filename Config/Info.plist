@@ -24,5 +24,7 @@
     <true/>
     <key>NSInputMonitoringUsageDescription</key>
     <string>drift listens for Escape while a HUD is visible so it can close the HUD without requiring the Live Log window to be focused.</string>
+    <key>NSUserNotificationAlertStyle</key>
+    <string>alert</string>
 </dict>
 </plist>

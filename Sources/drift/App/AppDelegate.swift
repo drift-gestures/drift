@@ -29,13 +29,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     )
     /// Temporary menu-bar HUD testing injection.
     private lazy var hudTestingController = HUDTestingController(hudController: hudController)
+    /// Registry for HUD definitions and their background workers.
+    private lazy var hudRegistry = HUDRegistry(hudController: hudController)
     /// Presenter responsible for creating and monitoring floating HUD windows.
     private lazy var hudPresenter = HUDWindowPresenter(
         hudStore: hudStore,
         hudMessages: hudMessages,
-        definitions: [AnyHUDDefinition(TimerHUDDefinition())],
+        definitions: hudRegistry.definitions,
         interactionReceiver: { [weak self] interaction in
-            self?.swiftBridge.receive(interaction)
+            self?.swiftBridge.receive(interaction) ?? ListenerPipelineResult()
         }
     )
     /// Input bridge that streams trackpad snapshots, runs listeners, and emits backend events.
@@ -52,9 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         snapshotReceiver: { [weak self] snapshot in
             self?.hudStore.updateTrackpad(snapshot)
         },
-        shouldReceiveKeyboardInteraction: { [hudController] keyPress in
-            keyPress.keyCode == KeyboardKey.escape &&
-                hudController.isActive(TimerHUDDefinition.hudID)
+        shouldReceiveKeyboardInteraction: { [hudController] _ in
+            hudController.isActive(TimerHUDDefinition.hudID)
         }
     )
 
@@ -62,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// - Parameter notification: The AppKit launch notification.
     func applicationDidFinishLaunching(_ notification: Notification) {
         activityLog.record("drift launched with no registered gesture listeners.", category: .system)
+        hudRegistry.applicationDidFinishLaunching()
         swiftBridge.start()
         configureMenuBar()
         hudPresenter.start()
