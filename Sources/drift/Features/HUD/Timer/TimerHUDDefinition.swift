@@ -47,7 +47,7 @@ struct TimerHUDDefinition: HudDefinition {
     /// App-wide background workers available to this HUD.
     private let workers: AppBackgroundWorkers
     /// Fixed Timer HUD window size, including the tick rail, gap, and controls.
-    let size = CGSize(width: TimerHUDStyle.timerTickWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerButtonWidth, height: TimerHUDStyle.windowHeight)
+    let size = CGSize(width: TimerHUDStyle.timerRailWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerButtonWidth, height: TimerHUDStyle.windowHeight)
 
     /// Creates the Timer HUD definition.
     /// - Parameters:

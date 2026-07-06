@@ -44,7 +44,7 @@ enum TimerHUDStyle {
     /// Fixed height of the Timer HUD window.
     static let windowHeight: CGFloat = 350
     /// Width of the tick rail portion of the HUD.
-    static let timerTickWidth: CGFloat = 160
+    static let timerRailWidth: CGFloat = 160
     /// Width of the control column portion of the HUD.
     static let timerButtonWidth: CGFloat = 110
     /// Horizontal gap between the tick rail and controls.
@@ -182,7 +182,7 @@ struct TimerHUDInteractionState: Equatable {
             nil
         case .pomodoro:
             CGSize(
-                width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerTickWidth,
+                width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerRailWidth,
                 height: TimerHUDStyle.pomodoroPanelHeight
             )
         }
@@ -394,6 +394,7 @@ struct TimerHUDView: View {
                 }
             }
         }
+        .frame(width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerRailWidth, height: TimerHUDStyle.pomodoroPanelHeight)
         .onAppear {
             updateSizeOverride()
         }
@@ -542,6 +543,7 @@ private struct TimerHUDTimerModeView: View {
             TimerHUDControlColumn(duration: duration, startTimer: startTimer)
                 .frame(width: TimerHUDStyle.timerButtonWidth, height: TimerHUDStyle.windowHeight, alignment: .top)
         }
+        .frame(width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerRailWidth, height: TimerHUDStyle.pomodoroPanelHeight, alignment: .topLeading)
     }
 }
 
@@ -594,14 +596,14 @@ private struct PomodoroHUDModeView: View {
                 TimerHUDDurationRail(
                     duration: durations[hoverField],
                     screenSize: CGSize(
-                        width: TimerHUDStyle.timerTickWidth,
+                        width: TimerHUDStyle.timerRailWidth,
                         height: TimerHUDStyle.windowHeight
                     )
                 )
                 .timerHUDDurationRailTransition()
             }
         }
-        .frame(width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerTickWidth, height: TimerHUDStyle.pomodoroPanelHeight, alignment: .topLeading)
+        .frame(width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerRailWidth, height: TimerHUDStyle.pomodoroPanelHeight, alignment: .topLeading)
     }
 
     /// Creates a binding for one Pomodoro duration field.
@@ -693,14 +695,14 @@ private struct ActivePomodoroHUDModeView: View {
                 TimerHUDDurationRail(
                     duration: durations[hoverField],
                     screenSize: CGSize(
-                        width: TimerHUDStyle.timerTickWidth,
+                        width: TimerHUDStyle.timerRailWidth,
                         height: TimerHUDStyle.windowHeight
                     )
                 )
                 .timerHUDDurationRailTransition()
             }
         }
-        .frame(width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerTickWidth, height: TimerHUDStyle.pomodoroPanelHeight, alignment: .topLeading)
+        .frame(width: TimerHUDStyle.pomodoroPanelWidth + TimerHUDStyle.timerGridGap + TimerHUDStyle.timerRailWidth, height: TimerHUDStyle.pomodoroPanelHeight, alignment: .topLeading)
     }
 
     /// Creates a binding for one editable future Pomodoro duration.
@@ -871,19 +873,33 @@ private struct TimerHUDDurationRail: View {
     let duration: Int
     /// Size used by the fade overlay to cover the visible rail area.
     let screenSize: CGSize
+    
+    func indexToBlur(_ at: Int) -> CGFloat {
+        let numberOfTicksVisible: CGFloat = TimerHUDStyle.windowHeight / (TimerHUDStyle.tickHeight+TimerHUDStyle.tickSpacing)
+        let tickOffset = at - duration
+        
+        if (CGFloat(abs(tickOffset)) > numberOfTicksVisible/5) {
+            return (CGFloat(abs(tickOffset))-numberOfTicksVisible/5)*0.5
+        } else {
+            return 0
+        }
+    }
+
 
     var body: some View {
         HStack(spacing: 8) {
             TimerHUDNumberColumn(
                 duration: duration,
+                indexToBlur: indexToBlur
             )
             TimerHUDTickColumn(
                 duration: duration,
+                indexToBlur: indexToBlur
             )
             TimerHUDIndicator()
         }
         .padding([.leading, .trailing], 20)
-        .frame(width: TimerHUDStyle.timerTickWidth, height: TimerHUDStyle.windowHeight)
+        .frame(width: TimerHUDStyle.timerRailWidth, height: TimerHUDStyle.windowHeight)
         .background(Color.black)
         .overlay {
             TimerHUDFadeOverlay(screenSize: screenSize)
@@ -951,7 +967,8 @@ private struct TimerHUDControlLabelStyle: LabelStyle {
 private struct TimerHUDNumberColumn: View {
     /// Currently selected duration in minutes.
     let duration: Int
-
+    
+    let indexToBlur: (_ at: Int) -> CGFloat;
 
     var body: some View {
         VStack(alignment: .trailing, spacing: TimerHUDStyle.rowSpacing) {
@@ -961,6 +978,7 @@ private struct TimerHUDNumberColumn: View {
                     .foregroundStyle(value <= duration ? Color.tick : Color.tickFaded)
                     .font(DriftTypography.timerRailNumber)
                     .frame(height: TimerHUDStyle.numberHeight)
+                    .blur(radius: indexToBlur(index*5))
             }
         }
         .drawingGroup()
@@ -981,7 +999,9 @@ private struct TimerHUDNumberColumn: View {
 private struct TimerHUDTickColumn: View {
     /// Currently selected duration in minutes.
     let duration: Int
-
+    
+    let indexToBlur: (_ at: Int) -> CGFloat;
+    
     var body: some View {
         VStack(alignment: .leading, spacing: TimerHUDStyle.tickSpacing) {
             ForEach(0..<TimerHUDStyle.tickCount, id: \.self) { index in
@@ -990,13 +1010,14 @@ private struct TimerHUDTickColumn: View {
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(index <= duration ? Color.tick : Color.tickFaded)
                     .cornerRadius(1)
+                    .blur(radius: indexToBlur(index))
             }
         }
         .offset(y: durationOffset)
         .padding([.top], TimerHUDStyle.windowHeight / 2 - 1.5)
         .padding([.bottom], 20)
         .frame(
-            width: TimerHUDStyle.timerTickWidth * 0.35,
+            width: TimerHUDStyle.timerRailWidth * 0.35,
             height: TimerHUDStyle.windowHeight,
             alignment: .topLeading
         )
@@ -1016,7 +1037,7 @@ private struct TimerHUDIndicator: View {
             Text("􀄦")
                 .foregroundStyle(Color.tick)
         }
-        .frame(width: TimerHUDStyle.timerTickWidth / 9)
+        .frame(width: TimerHUDStyle.timerRailWidth / 9)
     }
 }
 
@@ -1029,10 +1050,10 @@ private struct TimerHUDFadeOverlay: View {
         Rectangle()
             .fill(LinearGradient(
                 stops: [
-                    .init(color: Color(red: 0, green: 0, blue: 0), location: 0.05),
-                    .init(color: Color(red: 0, green: 0, blue: 0, opacity: 0), location: 0.5),
-                    .init(color: Color(red: 0, green: 0, blue: 0, opacity: 0), location: 0.5),
-                    .init(color: Color(red: 0, green: 0, blue: 0), location: 0.95),
+                    .init(color: Color(red: 0, green: 0, blue: 0), location: 0.0),
+                    .init(color: Color(red: 0, green: 0, blue: 0, opacity: 0), location: 0.4),
+                    .init(color: Color(red: 0, green: 0, blue: 0, opacity: 0), location: 0.6),
+                    .init(color: Color(red: 0, green: 0, blue: 0), location: 1),
                 ],
                 startPoint: .top,
                 endPoint: .bottom
