@@ -126,7 +126,7 @@ final class ListenerArchitectureTests: XCTestCase {
         let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.35), frame: 3))
 
         XCTAssertTrue(result.claimInteraction)
-        XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .vertical)]))
+        XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .vertical), .scroll(axis: .horizontal)]))
         XCTAssertEqual(result.emittedEvents.count, 1)
         guard case .timerHUDDidReceiveInput(let input) = result.emittedEvents.first else {
             return XCTFail("Expected timer duration input.")
@@ -189,7 +189,7 @@ final class ListenerArchitectureTests: XCTestCase {
         let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.14, y: 0.31), frame: 3))
 
         XCTAssertTrue(result.claimInteraction)
-        XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .horizontal)]))
+        XCTAssertEqual(result.suppressions, suppressingEscape([.scroll(axis: .vertical), .scroll(axis: .horizontal)]))
         XCTAssertEqual(result.emittedEvents.count, 1)
         guard case .timerHUDDidReceiveInput(let input) = result.emittedEvents.first else {
             return XCTFail("Expected timer HUD input.")
@@ -213,7 +213,7 @@ final class ListenerArchitectureTests: XCTestCase {
         XCTAssertEqual(started.suppressions, suppressingEscape([.scroll(axis: .vertical), .scroll(axis: .horizontal)]))
         XCTAssertTrue(started.emittedEvents.isEmpty)
         XCTAssertTrue(inputResult.claimInteraction)
-        XCTAssertEqual(inputResult.suppressions, suppressingEscape([.scroll(axis: .horizontal)]))
+        XCTAssertEqual(inputResult.suppressions, suppressingEscape([.scroll(axis: .vertical), .scroll(axis: .horizontal)]))
         XCTAssertEqual(inputResult.emittedEvents.count, 1)
         guard case .timerHUDDidReceiveInput(let input) = inputResult.emittedEvents.first else {
             return XCTFail("Expected visible Timer HUD to receive gesture input.")

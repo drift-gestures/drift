@@ -15,7 +15,7 @@ drift is a macOS menu-bar utility for testing raw trackpad input.
 1. The C listener copies private `TXMTFinger[]` frames into a C-side `TXMTTrackpadSnapshot`. It does not recognize gestures or suppress events.
 2. `CTrackpadBridge` copies the borrowed C snapshot into a Swift-owned `TrackpadSnapshot`.
 3. `ListenerPipeline` calls listener structs synchronously in registration order. A decision may stop the current frame, claim the contact sequence, request typed suppression, and emit semantic backend events.
-4. `EventSuppressionController` applies the exact axis and direction requested by listeners while preserving unsuppressed scroll components.
+4. `EventSuppressionController` applies the axes and directions requested by listeners while preserving unsuppressed scroll components. Timer HUD scroll gestures request both axes so diagonal trackpad deltas cannot leak into the foreground app.
 5. `SwiftBridge` sends emitted semantic events to the frontend. `HUDStore` owns active-HUD and custom frontend state, while `HudDefinition` defines HUD content, size, and placement.
 
 Each future listener belongs in `Sources/drift/Infrastructure/Input/Listeners` and is explicitly registered in order. The folder is intentionally empty right now.

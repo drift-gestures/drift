@@ -285,13 +285,12 @@ struct TimerHUDInputListener: Listener {
 
     /// Chooses foreground-event suppressions for a classified Timer HUD input.
     /// - Parameter input: The input emitted from gesture classification.
-    /// - Returns: Suppressions that match the input axis plus Escape suppression.
+    /// - Returns: Suppressions for the foreground events that should stay blocked.
     private func suppressions(for input: TimerHUDInput) -> Set<SuppressionRequest> {
         switch input.kind {
-        case .scrollUp, .scrollDown:
-            return withEscapeSuppression([.scroll(axis: .vertical)])
-        case .scrollLeft, .scrollRight:
-            return withEscapeSuppression([.scroll(axis: .horizontal)])
+        case .scrollUp, .scrollDown, .scrollLeft, .scrollRight:
+            // Trackpad swipes often include off-axis deltas, so keep both axes suppressed.
+            return activeSuppressions
         case .pinchOut, .pinchIn:
             return withEscapeSuppression([])
         }
