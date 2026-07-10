@@ -87,6 +87,8 @@ final class HUDStore: ObservableObject {
     @Published private(set) var customStates: [String: HUDState] = [:]
     /// Optional rendered size override keyed by HUD identifier.
     @Published private(set) var sizeOverrides: [HUDID: CGSize] = [:]
+    /// Optional AppKit behavior override keyed by HUD identifier.
+    @Published private(set) var windowBehaviorOverrides: [HUDID: HUDWindowBehavior] = [:]
     /// Latest trackpad state available to HUD layout and rendering.
     @Published private(set) var trackpadState = TrackpadState.idle
 
@@ -131,6 +133,25 @@ final class HUDStore: ObservableObject {
     /// - Returns: The overridden size, or `nil` when the HUD should use its default.
     func sizeOverride(for id: HUDID) -> CGSize? {
         sizeOverrides[id]
+    }
+
+    /// Overrides the AppKit behavior for a HUD, or clears the override.
+    /// - Parameters:
+    ///   - behavior: Window behavior to apply, or `nil` to use the default passive behavior.
+    ///   - id: The HUD whose window behavior should be overridden.
+    func setWindowBehaviorOverride(_ behavior: HUDWindowBehavior?, for id: HUDID) {
+        if let behavior {
+            windowBehaviorOverrides[id] = behavior
+        } else {
+            windowBehaviorOverrides.removeValue(forKey: id)
+        }
+    }
+
+    /// Returns a window behavior override for a HUD if one is active.
+    /// - Parameter id: The HUD identifier to inspect.
+    /// - Returns: The overridden behavior, or `.passive` by default.
+    func windowBehavior(for id: HUDID) -> HUDWindowBehavior {
+        windowBehaviorOverrides[id] ?? .passive
     }
 
     /// Updates the latest trackpad snapshot exposed to HUD layout and rendering.

@@ -28,6 +28,18 @@ final class ListenerArchitectureTests: XCTestCase {
         })
     }
 
+    func testClaimedGestureDoesNotConsumeUnrelatedLocalKeyPress() {
+        let pipeline = ListenerPipeline(listeners: [
+            StubListener(decision: ListenerDecision(claimInteraction: true)),
+        ])
+        _ = pipeline.process(snapshot(.began))
+
+        let result = pipeline.process(.keyboardPress(returnPress))
+
+        XCTAssertTrue(result.didClaimInteraction)
+        XCTAssertFalse(result.consumesKeyPress(KeyboardKey.return))
+    }
+
     func testCancelledListenerStillReceivesEndSnapshotToReset() {
         let pipeline = ListenerPipeline(listeners: [
             ResettingCandidateListener(),

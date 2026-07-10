@@ -47,8 +47,15 @@ playground.xcworkspace/
 *.log
 tmp/
 
+# JavaScript dependencies
+node_modules/
+
 # IDEs and editors
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Dev 
+Excalidraw
+Sources/drift/Resources/ExcalidrawHost

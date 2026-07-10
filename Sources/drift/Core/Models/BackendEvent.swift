@@ -52,4 +52,10 @@ enum BackendEvent: Sendable {
     case timerHUDDidClose(reason: TimerHUDCloseReason)
     /// A gesture-derived input was accepted for the active Timer HUD.
     case timerHUDDidReceiveInput(TimerHUDInput)
+    /// The Excalidraw HUD was opened by the listener-owned HUD controller.
+    case excalidrawHUDDidOpen(source: HUDSessionSource)
+    /// The Excalidraw HUD was closed by the listener-owned HUD controller.
+    case excalidrawHUDDidClose(reason: ExcalidrawHUDCloseReason)
+    /// A gesture-derived input was accepted for the active Excalidraw HUD.
+    case excalidrawHUDDidReceiveInput(ExcalidrawHUDInput)
 }

@@ -8,8 +8,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     /// Lazily created live-log window.
     private var logWindow: NSWindow?
+    /// Lazily created app settings window.
+    private var settingsWindow: NSWindow?
     /// Menu item used to reflect and toggle Timer HUD visibility.
     private var timerHUDMenuItem: NSMenuItem?
+    /// Menu item used to reflect and toggle Excalidraw HUD visibility.
+    private var excalidrawHUDMenuItem: NSMenuItem?
     /// In-memory diagnostics store displayed by the live log.
     private let activityLog = ActivityLogStore()
     /// Thread-safe HUD visibility mirror shared with listener code.
@@ -46,6 +50,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         listeners: [
             TimerHUDInputListener(
                 hudController: hudController
+            ),
+            ExcalidrawHUDInputListener(
+                hudController: hudController,
+                modeState: hudRegistry.excalidrawModeState
             )
         ],
         eventReceiver: { [weak self] event in
@@ -55,25 +63,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.hudStore.updateTrackpad(snapshot)
         },
         shouldReceiveKeyboardInteraction: { [hudController] _ in
-            hudController.isActive(TimerHUDDefinition.hudID)
+            hudController.isActive(TimerHUDDefinition.hudID) ||
+            hudController.isActive(ExcalidrawHUDDefinition.hudID)
         }
     )
 
     /// Starts the input bridge, menu-bar UI, HUD presenter, and live log after launch.
     /// - Parameter notification: The AppKit launch notification.
     func applicationDidFinishLaunching(_ notification: Notification) {
-        activityLog.record("drift launched with no registered gesture listeners.", category: .system)
+        activityLog.record("drift launched.", category: .system)
         hudRegistry.applicationDidFinishLaunching()
         swiftBridge.start()
         configureMenuBar()
         hudPresenter.start()
-        openLiveLog()
+        if shouldOpenLiveLogAtLaunch {
+            openLiveLog()
+        }
     }
 
     /// Stops input processing when the app is about to terminate.
     /// - Parameter notification: The AppKit termination notification.
     func applicationWillTerminate(_ notification: Notification) {
         swiftBridge.stop()
+        hudRegistry.applicationWillTerminate()
     }
 
     /// Builds the menu-bar status item and app menu.
@@ -93,7 +105,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let menu = NSMenu()
         menu.delegate = self
-        let liveLogItem = NSMenuItem(title: "Open Live Log", action: #selector(openLiveLogFromMenu), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettingsFromMenu), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        let liveLogItem = NSMenuItem(title: "Open Live Log", action: #selector(openLiveLogFromMenu), keyEquivalent: "l")
         liveLogItem.target = self
         menu.addItem(liveLogItem)
         menu.addItem(.separator())
@@ -101,10 +116,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let timerItem = NSMenuItem(title: "Timer HUD", action: #selector(toggleTimerHUD), keyEquivalent: "t")
         timerItem.target = self
         hudsMenu.addItem(timerItem)
+        let excalidrawItem = NSMenuItem(title: "Excalidraw HUD", action: #selector(toggleExcalidrawHUD), keyEquivalent: "e")
+        excalidrawItem.target = self
+        hudsMenu.addItem(excalidrawItem)
         let hudsItem = NSMenuItem(title: "HUDs", action: nil, keyEquivalent: "")
         hudsItem.submenu = hudsMenu
         menu.addItem(hudsItem)
         timerHUDMenuItem = timerItem
+        excalidrawHUDMenuItem = excalidrawItem
         menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "Quit drift", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
@@ -119,6 +138,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         openLiveLog()
     }
 
+    /// Opens the app settings window from the menu bar.
+    @objc private func openSettingsFromMenu() {
+        openSettings()
+    }
+
     /// Refreshes menu item state immediately before the menu opens.
     /// - Parameter menu: The menu that is about to open.
     func menuWillOpen(_ menu: NSMenu) {
@@ -131,6 +155,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let isActive = hudController.isActive(hudID)
         let isActiveAfterToggle = hudTestingController.toggle(hudID)
         activityLog.record("\(isActive ? "Closed" : "Opened") Timer HUD from the menu bar.", category: .system)
+        if isActiveAfterToggle {
+            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        }
+        updateHUDMenuState()
+    }
+
+    /// Toggles Excalidraw HUD visibility from the menu bar.
+    @objc private func toggleExcalidrawHUD() {
+        let hudID = ExcalidrawHUDDefinition.hudID
+        let isActive = hudController.isActive(hudID)
+        let isActiveAfterToggle = hudTestingController.toggle(hudID)
+        activityLog.record("\(isActive ? "Closed" : "Opened") Excalidraw HUD from the menu bar.", category: .system)
         if isActiveAfterToggle {
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
         }
@@ -154,14 +190,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             updateHUDMenuState()
         case .timerHUDDidReceiveInput(let input):
             activityLog.record("Timer HUD received \(input.kind.displayName).", category: .action)
+        case .excalidrawHUDDidOpen:
+            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+            activityLog.record("Opened Excalidraw HUD from the top-edge swipe.", category: .action)
+            updateHUDMenuState()
+        case .excalidrawHUDDidClose(let reason):
+            let reasonText = switch reason {
+            case .clickOutside: "an outside click"
+            case .escape: "Escape"
+            case .commandW: "Command-W"
+            }
+            activityLog.record("Closed Excalidraw HUD from \(reasonText).", category: .action)
+            updateHUDMenuState()
+        case .excalidrawHUDDidReceiveInput(let input):
+            let inputText = switch input.kind {
+            case .moveLeft: "move left"
+            case .moveRight: "move right"
+            case .execute: "execute"
+            }
+            activityLog.record("Excalidraw HUD received \(inputText).", category: .action)
         }
     }
 
     /// Synchronizes the Timer HUD menu item title and checkmark with current HUD state.
     private func updateHUDMenuState() {
-        let isActive = hudController.isActive(TimerHUDDefinition.hudID)
-        timerHUDMenuItem?.state = isActive ? .on : .off
-        timerHUDMenuItem?.title = isActive ? "Hide Timer HUD" : "Show Timer HUD"
+        let isTimerActive = hudController.isActive(TimerHUDDefinition.hudID)
+        timerHUDMenuItem?.state = isTimerActive ? .on : .off
+        timerHUDMenuItem?.title = isTimerActive ? "Hide Timer HUD" : "Show Timer HUD"
+
+        let isExcalidrawActive = hudController.isActive(ExcalidrawHUDDefinition.hudID)
+        excalidrawHUDMenuItem?.state = isExcalidrawActive ? .on : .off
+        excalidrawHUDMenuItem?.title = isExcalidrawActive ? "Hide Excalidraw HUD" : "Show Excalidraw HUD"
     }
 
     /// Creates or focuses the live-log window.
@@ -177,6 +236,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         logWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Creates or focuses the app settings window.
+    private func openSettings() {
+        if settingsWindow == nil {
+            let timerWorker = hudRegistry.timerWorker
+            let view = SettingsView(
+                documents: hudRegistry.excalidrawWorker.documents,
+                timerPreferences: timerWorker.timerPreferences,
+                pomodoroPreferences: timerWorker.pomodoroPreferences,
+                timerWorker: timerWorker
+            )
+            let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+            window.title = "drift Settings"
+            window.setContentSize(NSSize(width: 720, height: 480))
+            window.minSize = NSSize(width: 680, height: 440)
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.isReleasedWhenClosed = false
+            window.center()
+            settingsWindow = window
+        }
+        settingsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Whether the live log should open automatically after launch.
+    private var shouldOpenLiveLogAtLaunch: Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: AppPreferenceKey.openLiveLogAtLaunch) != nil else {
+            return true
+        }
+        return defaults.bool(forKey: AppPreferenceKey.openLiveLogAtLaunch)
     }
 
     /// Terminates the AppKit application.

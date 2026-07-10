@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import WebKit
 
 @MainActor
 /// Presents active HUD definitions as floating AppKit panels and routes outside interactions.
@@ -14,7 +15,13 @@ final class HUDWindowPresenter {
     /// Receiver used to send HUD-originated interactions back into the input pipeline.
     private let interactionReceiver: @MainActor (Interaction) -> ListenerPipelineResult
     /// Currently displayed HUD panel and its identifier.
-    private var activeWindow: (id: HUDID, panel: NSPanel)?
+    private var activeWindow: (id: HUDID, panel: HUDPanel)?
+    /// Last behavior applied to the active panel.
+    private var appliedWindowBehavior: HUDWindowBehavior?
+    /// Monotonic token used to cancel stale focus retries.
+    private var focusRequestID = 0
+    /// One-shot activation observer for the latest focus request.
+    private var activationObserver: NSObjectProtocol?
     /// Subscription to HUD visibility changes.
     private var cancellable: AnyCancellable?
     /// Local mouse monitor used to detect clicks outside HUD windows while drift is active.
@@ -47,7 +54,11 @@ final class HUDWindowPresenter {
     /// Starts observing HUD visibility and synchronizes the initial window set.
     func start() {
         guard cancellable == nil else { return }
-        cancellable = Publishers.CombineLatest(hudStore.$activeHUDID, hudStore.$sizeOverrides).sink { [weak self] activeHUDID, _ in
+        cancellable = Publishers.CombineLatest3(
+            hudStore.$activeHUDID,
+            hudStore.$sizeOverrides,
+            hudStore.$windowBehaviorOverrides
+        ).sink { [weak self] activeHUDID, _, _ in
             self?.syncWindow(activeHUDID: activeHUDID)
         }
         syncWindow(activeHUDID: hudStore.activeHUDID)
@@ -66,12 +77,18 @@ final class HUDWindowPresenter {
             let window = makeWindow(for: definition)
             activeWindow = (id: activeHUDID, panel: window)
             window.orderFrontRegardless()
+            let behavior = hudStore.windowBehavior(for: activeHUDID)
+            applyWindowBehavior(window, to: behavior, shouldFocus: true)
         }
 
         if let activeWindow,
            activeWindow.id == activeHUDID,
            let definition = definitions[activeWindow.id] {
-            resizeActiveWindow(activeWindow.panel, to: displaySize(for: definition))
+            resizeActiveWindow(activeWindow.panel, for: definition, to: displaySize(for: definition))
+            let behavior = hudStore.windowBehavior(for: activeWindow.id)
+            if behavior != appliedWindowBehavior {
+                applyWindowBehavior(activeWindow.panel, to: behavior, shouldFocus: true)
+            }
         }
 
         updateInteractionMonitoring()
@@ -81,16 +98,23 @@ final class HUDWindowPresenter {
     private func closeActiveWindow() {
         guard let window = activeWindow?.panel else { return }
 
+        let shouldDemoteAfterClose = window.allowsKeyInput
         activeWindow = nil
+        appliedWindowBehavior = nil
+        clearActivationObserver()
+        focusRequestID += 1
         window.orderOut(nil)
         window.contentView = nil
         window.close()
+        if shouldDemoteAfterClose {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     /// Builds an AppKit panel for one HUD definition.
     /// - Parameter definition: The HUD definition to render.
     /// - Returns: A configured, borderless floating panel.
-    private func makeWindow(for definition: AnyHUDDefinition) -> NSPanel {
+    private func makeWindow(for definition: AnyHUDDefinition) -> HUDPanel {
         let screenFrame = NSScreen.main?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1200, height: 800)
         let layoutContext = HUDLayoutContext(
             mousePosition: NSEvent.mouseLocation,
@@ -101,17 +125,17 @@ final class HUDWindowPresenter {
             layout: layoutContext,
             state: hudStore.customStates[definition.id.rawValue] ?? HUDState()
         )
-        let origin = definition.position(in: layoutContext)
         let size = displaySize(for: definition)
+        let origin = definition.position(in: layoutContext, size: size)
         let frame = CGRect(origin: origin, size: size)
         let rootView = definition.content(context: hudContext)
             .environmentObject(hudStore)
             .environmentObject(hudMessages)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-        let panel = NSPanel(
+        let panel = HUDPanel(
             contentRect: frame,
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
@@ -122,13 +146,15 @@ final class HUDWindowPresenter {
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.ignoresMouseEvents = false
+        panel.acceptsMouseMovedEvents = true
         panel.isReleasedWhenClosed = false
 
-        let hostingView = NSHostingView(rootView: rootView)
+        let hostingView = HUDHostingView(rootView: rootView)
         hostingView.frame = CGRect(origin: .zero, size: size)
         hostingView.autoresizingMask = [.width, .height]
         panel.contentView = hostingView
         panel.setFrame(frame, display: false)
+        panel.allowsKeyInput = true
         return panel
     }
 
@@ -143,15 +169,130 @@ final class HUDWindowPresenter {
     /// - Parameters:
     ///   - panel: The HUD panel to resize.
     ///   - size: The desired rendered size.
-    private func resizeActiveWindow(_ panel: NSPanel, to size: CGSize) {
-        guard panel.frame.size != size else { return }
+    private func resizeActiveWindow(_ panel: HUDPanel, for definition: AnyHUDDefinition, to size: CGSize) {
+        let screenFrame = NSScreen.main?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1200, height: 800)
+        let layoutContext = HUDLayoutContext(
+            mousePosition: NSEvent.mouseLocation,
+            screenFrame: screenFrame,
+            trackpadState: hudStore.trackpadState
+        )
+        let frame = CGRect(origin: definition.position(in: layoutContext, size: size), size: size)
+        guard panel.frame != frame else { return }
 
-        var frame = panel.frame
-        let maxY = frame.maxY
-        frame.size = size
-        frame.origin.y = maxY - size.height
         panel.setFrame(frame, display: true)
         panel.contentView?.frame = CGRect(origin: .zero, size: size)
+    }
+
+    /// Applies key-input behavior to a HUD panel.
+    /// - Parameters:
+    ///   - panel: Panel to configure.
+    ///   - behavior: Desired behavior.
+    private func applyWindowBehavior(_ panel: HUDPanel, to behavior: HUDWindowBehavior, shouldFocus: Bool) {
+        panel.allowsKeyInput = true
+        appliedWindowBehavior = behavior
+        switch behavior {
+        case .passive:
+            if shouldFocus {
+                focus(panel, focusingWebView: false)
+            }
+        case .keyInput:
+            NSApp.setActivationPolicy(.regular)
+            if shouldFocus {
+                focus(panel, focusingWebView: true)
+            }
+        }
+    }
+
+    /// Makes the HUD panel key immediately and repeats once after AppKit finishes ordering/layout.
+    /// - Parameters:
+    ///   - panel: HUD panel to focus.
+    ///   - focusingWebView: Whether an embedded web editor should become first responder.
+    private func focus(_ panel: HUDPanel, focusingWebView: Bool) {
+        focusRequestID += 1
+        let requestID = focusRequestID
+        clearActivationObserver()
+
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: NSApp,
+            queue: .main
+        ) { [weak self, weak panel] _ in
+            Task { @MainActor [weak self, weak panel] in
+                guard let self, let panel else { return }
+                self.performFocusIfCurrent(
+                    requestID,
+                    panel: panel,
+                    focusingWebView: focusingWebView
+                )
+            }
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.orderFrontRegardless()
+        DispatchQueue.main.async { [weak self, weak panel] in
+            guard let self, let panel else { return }
+            self.performFocusIfCurrent(requestID, panel: panel, focusingWebView: focusingWebView)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self, weak panel] in
+                guard let self, let panel else { return }
+                self.performFocusIfCurrent(requestID, panel: panel, focusingWebView: focusingWebView)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, weak panel] in
+                    guard let self, let panel else { return }
+                    self.performFocusIfCurrent(requestID, panel: panel, focusingWebView: focusingWebView)
+                    if self.focusRequestID == requestID {
+                        self.clearActivationObserver()
+                    }
+                }
+            }
+        }
+    }
+
+    /// Performs one focus attempt when the request still matches the active window.
+    /// - Parameters:
+    ///   - requestID: Token identifying the focus request.
+    ///   - panel: HUD panel to focus.
+    ///   - focusingWebView: Whether an embedded web editor should become first responder.
+    private func performFocusIfCurrent(_ requestID: Int, panel: HUDPanel, focusingWebView: Bool) {
+        guard focusRequestID == requestID,
+              activeWindow?.panel === panel
+        else {
+            return
+        }
+        performFocus(panel, focusingWebView: focusingWebView)
+        if panel.isKeyWindow {
+            clearActivationObserver()
+        }
+    }
+
+    /// Performs one concrete focus attempt for a HUD panel.
+    /// - Parameters:
+    ///   - panel: HUD panel to focus.
+    ///   - focusingWebView: Whether an embedded web editor should become first responder.
+    private func performFocus(_ panel: HUDPanel, focusingWebView: Bool) {
+        panel.orderFrontRegardless()
+        panel.makeKeyAndOrderFront(nil)
+        if focusingWebView {
+            focusFirstWebView(in: panel)
+        }
+    }
+
+    /// Removes the pending app-activation observer, if any.
+    private func clearActivationObserver() {
+        if let activationObserver {
+            NotificationCenter.default.removeObserver(activationObserver)
+            self.activationObserver = nil
+        }
+    }
+
+    /// Gives embedded web editors first responder status after their HUD window is key.
+    /// - Parameter panel: HUD panel that may contain a WebKit editor.
+    private func focusFirstWebView(in panel: HUDPanel) {
+        guard panel.isKeyWindow,
+              let contentView = panel.contentView,
+              let webView = contentView.firstDescendant(ofType: WKWebView.self)
+        else {
+            return
+        }
+        panel.makeFirstResponder(webView)
     }
 
     /// Starts or stops interaction monitoring based on whether any HUD windows are visible.
@@ -251,7 +392,7 @@ struct AnyHUDDefinition {
     /// Fixed window size of the wrapped HUD definition.
     let size: CGSize
     /// Closure used to compute a HUD window origin.
-    private let positionProvider: (HUDLayoutContext) -> CGPoint
+    private let positionProvider: (HUDLayoutContext, CGSize) -> CGPoint
     /// Closure used to build type-erased HUD content.
     private let contentProvider: @MainActor (HUDContext) -> AnyView
 
@@ -261,15 +402,15 @@ struct AnyHUDDefinition {
     init<Definition: HudDefinition>(_ definition: Definition) {
         id = definition.id
         size = definition.size
-        positionProvider = { context in definition.position(in: context) }
+        positionProvider = { context, size in definition.position(in: context, size: size) }
         contentProvider = { context in AnyView(definition.content(context: context)) }
     }
 
     /// Computes the wrapped HUD's window origin.
     /// - Parameter context: Layout context for the current presentation pass.
     /// - Returns: The HUD window origin.
-    func position(in context: HUDLayoutContext) -> CGPoint {
-        positionProvider(context)
+    func position(in context: HUDLayoutContext, size: CGSize) -> CGPoint {
+        positionProvider(context, size)
     }
 
     /// Builds the wrapped HUD content as `AnyView`.
@@ -278,6 +419,32 @@ struct AnyHUDDefinition {
     @MainActor
     func content(context: HUDContext) -> AnyView {
         contentProvider(context)
+    }
+}
+
+/// Borderless HUD panel that can become key whenever a HUD is visible.
+private final class HUDPanel: NSPanel {
+    /// Whether this panel should accept keyboard focus.
+    var allowsKeyInput = false
+
+    override var canBecomeKey: Bool {
+        allowsKeyInput
+    }
+
+    override var canBecomeMain: Bool {
+        allowsKeyInput
+    }
+
+    override func noResponder(for eventSelector: Selector) {
+        guard eventSelector != #selector(NSResponder.keyDown(with:)) else { return }
+        super.noResponder(for: eventSelector)
+    }
+}
+
+/// Hosting view that allows the first click to reach HUD content even while the app is activating.
+private final class HUDHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
     }
 }
 
@@ -312,5 +479,22 @@ private extension KeyboardPressInteraction {
             characters: event.charactersIgnoringModifiers,
             modifiers: modifiers
         )
+    }
+}
+
+private extension NSView {
+    /// Finds the first descendant matching a concrete AppKit view type.
+    /// - Parameter type: View type to locate.
+    /// - Returns: The first matching descendant, if present.
+    func firstDescendant<ViewType: NSView>(ofType type: ViewType.Type) -> ViewType? {
+        for subview in subviews {
+            if let match = subview as? ViewType {
+                return match
+            }
+            if let match = subview.firstDescendant(ofType: type) {
+                return match
+            }
+        }
+        return nil
     }
 }

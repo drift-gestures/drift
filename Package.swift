@@ -24,13 +24,18 @@ let package = Package(
         .executableTarget(
             name: "drift",
             dependencies: ["driftMultitouch"],
+            resources: [
+                .copy("Resources/ExcalidrawHost")
+            ],
             swiftSettings: [
                 .unsafeFlags(["-Xfrontend", "-strict-concurrency=minimal"])
             ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
+                .linkedFramework("Network"),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("UserNotifications"),
+                .linkedFramework("WebKit"),
             ]
         ),
         .testTarget(

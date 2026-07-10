@@ -25,6 +25,26 @@ final class HUDRegistry {
         workers.applicationDidFinishLaunching()
     }
 
+    /// Stops all registered background workers before the app terminates.
+    func applicationWillTerminate() {
+        workers.applicationWillTerminate()
+    }
+
+    /// Excalidraw mode mirror shared with the input listener.
+    var excalidrawModeState: ExcalidrawHUDModeState {
+        workers.excalidraw.modeState
+    }
+
+    /// Excalidraw runtime shared with the app settings window.
+    var excalidrawWorker: ExcalidrawBackgroundWorker {
+        workers.excalidraw
+    }
+
+    /// Timer runtime shared with the app settings window.
+    var timerWorker: TimerBackgroundWorker {
+        workers.timer
+    }
+
     /// Builds all registered HUD definitions from the HUD builder map.
     /// - Parameters:
     ///   - hudController: HUD lifecycle handle shared with HUD definitions.
@@ -42,6 +62,14 @@ final class HUDRegistry {
     /// HUD definition builders keyed by HUD identifier.
     private static var definitionBuilders: [HUDID: DefinitionBuilder] {
         [
+            ExcalidrawHUDDefinition.hudID: { hudController, workers in
+                AnyHUDDefinition(
+                    ExcalidrawHUDDefinition(
+                        hudController: hudController,
+                        worker: workers.excalidraw
+                    )
+                )
+            },
             TimerHUDDefinition.hudID: { hudController, workers in
                 AnyHUDDefinition(
                     TimerHUDDefinition(

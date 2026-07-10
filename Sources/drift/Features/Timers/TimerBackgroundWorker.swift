@@ -3,6 +3,8 @@ import Foundation
 /// App-owned background worker for Timer and Pomodoro runtime services.
 @MainActor
 final class TimerBackgroundWorker: HUDBackgroundWorker {
+    /// Store for persisted Timer defaults.
+    let timerPreferences = TimerPreferencesStore()
     /// Runtime coordinator for active background timers.
     let backgroundTimers = BackgroundTimerCoordinator()
     /// Store for persisted Pomodoro duration preferences.
