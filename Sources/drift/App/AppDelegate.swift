@@ -3,13 +3,21 @@ import SwiftUI
 
 @MainActor
 /// AppKit delegate that wires together the menu-bar app, input bridge, HUDs, and live log.
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     /// Menu-bar status item that owns the app menu.
     private var statusItem: NSStatusItem?
     /// Lazily created live-log window.
     private var logWindow: NSWindow?
     /// Lazily created app settings window.
     private var settingsWindow: NSWindow?
+    /// Standalone window that renders live trackpad contacts.
+    private var trackpadMapWindow: NSWindow?
+    /// Global pointer monitor used because the map window itself passes every event through.
+    private var trackpadMapPointerMonitor: Any?
+    /// Local counterpart that observes pointer movement over drift's own windows.
+    private var trackpadMapLocalPointerMonitor: Any?
+    /// State owned by the standalone virtual trackpad feature.
+    private let trackpadMapStore = TrackpadMapStore()
     /// Menu item used to reflect and toggle Timer HUD visibility.
     private var timerHUDMenuItem: NSMenuItem?
     /// Menu item used to reflect and toggle Excalidraw HUD visibility.
@@ -61,6 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         },
         snapshotReceiver: { [weak self] snapshot in
             self?.hudStore.updateTrackpad(snapshot)
+            self?.trackpadMapStore.update(with: snapshot)
         },
         shouldReceiveKeyboardInteraction: { [hudController] _ in
             hudController.isActive(TimerHUDDefinition.hudID) ||
@@ -76,6 +85,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         swiftBridge.start()
         configureMenuBar()
         hudPresenter.start()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(screenParametersDidChange),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+        if UserDefaults.standard.bool(forKey: AppPreferenceKey.virtualTrackpadEnabled) {
+            setVirtualTrackpadEnabled(true)
+        }
         if shouldOpenLiveLogAtLaunch {
             openLiveLog()
         }
@@ -84,6 +102,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Stops input processing when the app is about to terminate.
     /// - Parameter notification: The AppKit termination notification.
     func applicationWillTerminate(_ notification: Notification) {
+        NotificationCenter.default.removeObserver(self)
+        stopTrackpadMapPointerMonitoring()
         swiftBridge.stop()
         hudRegistry.applicationWillTerminate()
     }
@@ -246,7 +266,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 documents: hudRegistry.excalidrawWorker.documents,
                 timerPreferences: timerWorker.timerPreferences,
                 pomodoroPreferences: timerWorker.pomodoroPreferences,
-                timerWorker: timerWorker
+                timerWorker: timerWorker,
+                setVirtualTrackpadEnabled: { [weak self] enabled in
+                    self?.setVirtualTrackpadEnabled(enabled)
+                }
             )
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
             window.title = "drift Settings"
@@ -259,6 +282,93 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Opens or closes the standalone virtual trackpad window.
+    private func setVirtualTrackpadEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: AppPreferenceKey.virtualTrackpadEnabled)
+        if enabled {
+            if trackpadMapWindow == nil {
+                let view = TrackpadMapView(store: trackpadMapStore)
+                let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+                window.setContentSize(NSSize(width: 240, height: 150))
+                window.styleMask = [.borderless]
+                window.isReleasedWhenClosed = false
+                window.isOpaque = false
+                window.backgroundColor = .clear
+                window.hasShadow = true
+                window.ignoresMouseEvents = true
+                window.level = .floating
+                window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+                window.alphaValue = 0.72
+                window.delegate = self
+                trackpadMapWindow = window
+            }
+            positionTrackpadMapWindow()
+            trackpadMapWindow?.orderFrontRegardless()
+            startTrackpadMapPointerMonitoring()
+        } else {
+            stopTrackpadMapPointerMonitoring()
+            trackpadMapWindow?.close()
+        }
+    }
+
+    /// Anchors the mini map inside the bottom-right corner of the current main screen.
+    private func positionTrackpadMapWindow() {
+        guard let window = trackpadMapWindow, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        let visibleFrame = screen.visibleFrame
+        window.setFrameOrigin(NSPoint(
+            x: visibleFrame.maxX - window.frame.width - 16,
+            y: visibleFrame.minY + 16
+        ))
+    }
+
+    /// Watches pointer movement without making the pass-through window interactive.
+    private func startTrackpadMapPointerMonitoring() {
+        guard trackpadMapPointerMonitor == nil, trackpadMapLocalPointerMonitor == nil else { return }
+        trackpadMapPointerMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateTrackpadMapTransparency()
+            }
+        }
+        trackpadMapLocalPointerMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]
+        ) { [weak self] event in
+            self?.updateTrackpadMapTransparency()
+            return event
+        }
+        updateTrackpadMapTransparency()
+    }
+
+    /// Stops global pointer observation when the map is disabled or the app terminates.
+    private func stopTrackpadMapPointerMonitoring() {
+        if let monitor = trackpadMapPointerMonitor {
+            NSEvent.removeMonitor(monitor)
+            trackpadMapPointerMonitor = nil
+        }
+        if let monitor = trackpadMapLocalPointerMonitor {
+            NSEvent.removeMonitor(monitor)
+            trackpadMapLocalPointerMonitor = nil
+        }
+    }
+
+    /// Makes the mini map more see-through whenever the pointer is over its frame.
+    private func updateTrackpadMapTransparency() {
+        guard let window = trackpadMapWindow else { return }
+        window.alphaValue = window.frame.contains(NSEvent.mouseLocation) ? 0.38 : 0.72
+    }
+
+    /// Keeps the overlay anchored after display geometry or menu-bar placement changes.
+    @objc private func screenParametersDidChange() {
+        positionTrackpadMapWindow()
+    }
+
+    /// Keeps the persisted setting synchronized when the user closes the map window directly.
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === trackpadMapWindow else { return }
+        UserDefaults.standard.set(false, forKey: AppPreferenceKey.virtualTrackpadEnabled)
     }
 
     /// Whether the live log should open automatically after launch.

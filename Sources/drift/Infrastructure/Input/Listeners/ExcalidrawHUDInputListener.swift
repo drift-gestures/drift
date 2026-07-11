@@ -19,7 +19,7 @@ struct ExcalidrawHUDInputListener: Listener {
     private let holdDuration: TimeInterval = 0.3
     private let navigationThreshold: CGFloat = 0.055
     private let executeThreshold: CGFloat = 0.22
-//    private var lastGestureStatus: GestureStatus = .waiting
+    private let searchNavigationThreshold = 0.01
 
     /// Creates an Excalidraw HUD listener.
     init(
@@ -42,10 +42,10 @@ struct ExcalidrawHUDInputListener: Listener {
     }
 
     private mutating func onTrackpadSnapshot(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
-//        if (lastGestureStatus.label != gestureStatus.label) {
-//            print(gestureStatus.label)
-//            lastGestureStatus = gestureStatus
-//        }
+        if isExcalidrawHUDActive, isSearchMode {
+            return receiveSearchInput(snapshot)
+        }
+
         switch gestureStatus {
         case .waiting:
             return checkForActivationStart(snapshot)
@@ -138,7 +138,6 @@ struct ExcalidrawHUDInputListener: Listener {
         guard let pendingCenter,
               let pendingTimestamp
         else {
-            print("cancelled 2")
             return cancelGesture(with: snapshot)
         }
 
@@ -158,10 +157,6 @@ struct ExcalidrawHUDInputListener: Listener {
             gestureStatus = .possible(snapshot)
             return ListenerDecision(suppressions: activeSuppressions)
         }
-//        guard downwardMovement >= abs(deltaX) else {
-//            return cancelGesture(with: snapshot)
-//        }
-
         if downwardMovement >= quickOpenMovementThreshold && elapsed < holdDuration {
             return openQuickDocument(from: snapshot, claimInteraction: true)
         }
@@ -237,6 +232,35 @@ struct ExcalidrawHUDInputListener: Listener {
         )
     }
 
+    private mutating func receiveSearchInput(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
+        guard snapshot.fingerCount == 2 else {
+            return ListenerDecision()
+        }
+
+        if snapshot.phase == .ended {
+            clearTracking()
+            return ListenerDecision()
+        }
+
+        guard let pendingCenter else {
+            self.pendingCenter = snapshot.center
+            return ListenerDecision(claimInteraction: true, suppressions: activeSuppressions)
+        }
+
+        let deltaY = snapshot.center.y - pendingCenter.y
+        guard abs(deltaY) >= searchNavigationThreshold else {
+            return ListenerDecision(claimInteraction: true, suppressions: activeSuppressions)
+        }
+
+        self.pendingCenter = snapshot.center
+        let offset = deltaY >= 0 ? -1 : 1
+        guard sendSearchScroll(offset: offset) else {
+            clearTracking()
+            return ListenerDecision()
+        }
+        return ListenerDecision(claimInteraction: true, suppressions: activeSuppressions)
+    }
+
     private mutating func openQuickDocument(
         from snapshot: TrackpadSnapshot,
         claimInteraction: Bool
@@ -306,6 +330,10 @@ struct ExcalidrawHUDInputListener: Listener {
 
     private func sendSavePrompt() -> Bool {
         hudController?.send(.excalidraw(.savePrompt), to: ExcalidrawHUDDefinition.hudID) ?? false
+    }
+
+    private func sendSearchScroll(offset: Int) -> Bool {
+        hudController?.send(.excalidraw(.searchScroll(offset: offset)), to: ExcalidrawHUDDefinition.hudID) ?? false
     }
 
     private mutating func cancelGesture(with snapshot: TrackpadSnapshot) -> ListenerDecision {

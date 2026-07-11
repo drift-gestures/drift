@@ -57,6 +57,8 @@
 		10000000000000000000004C /* ExcalidrawSavePromptContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004C /* ExcalidrawSavePromptContent.swift */; };
 		10000000000000000000004D /* TimerPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004D /* TimerPreferencesStore.swift */; };
 		10000000000000000000004E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004E /* SettingsView.swift */; };
+		10000000000000000000004F /* TrackpadMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004F /* TrackpadMapStore.swift */; };
+		100000000000000000000050 /* TrackpadMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000050 /* TrackpadMapView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -114,6 +116,8 @@
 		20000000000000000000004C /* ExcalidrawSavePromptContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawSavePromptContent.swift; sourceTree = "<group>"; };
 		20000000000000000000004D /* TimerPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerPreferencesStore.swift; sourceTree = "<group>"; };
 		20000000000000000000004E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		20000000000000000000004F /* TrackpadMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadMapStore.swift; sourceTree = "<group>"; };
+		200000000000000000000050 /* TrackpadMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadMapView.swift; sourceTree = "<group>"; };
 		AE84834E2FE19DCA00446B38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -261,6 +265,7 @@
 				40000000000000000000000D /* Logging */,
 				40000000000000000000000E /* QuickActions */,
 				40000000000000000000001B /* Settings */,
+				40000000000000000000001C /* TrackpadMap */,
 				400000000000000000000017 /* Timers */,
 			);
 			path = Features;
@@ -411,6 +416,15 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		40000000000000000000001C /* TrackpadMap */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000004F /* TrackpadMapStore.swift */,
+				200000000000000000000050 /* TrackpadMapView.swift */,
+			);
+			path = TrackpadMap;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -531,6 +545,8 @@
 				10000000000000000000004B /* ExcalidrawThumbnailView.swift in Sources */,
 				10000000000000000000004D /* TimerPreferencesStore.swift in Sources */,
 				10000000000000000000004E /* SettingsView.swift in Sources */,
+				10000000000000000000004F /* TrackpadMapStore.swift in Sources */,
+				100000000000000000000050 /* TrackpadMapView.swift in Sources */,
 				100000000000000000000038 /* ExcalidrawModels.swift in Sources */,
 				100000000000000000000035 /* ExcalidrawStaticServer.swift in Sources */,
 				100000000000000000000003 /* GestureModels.swift in Sources */,

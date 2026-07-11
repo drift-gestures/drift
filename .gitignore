@@ -56,6 +56,6 @@ node_modules/
 *.swp
 *.swo
 
-# Dev 
-Excalidraw
-Sources/drift/Resources/ExcalidrawHost
+# Dev
+/Excalidraw/
+/Sources/drift/Resources/ExcalidrawHost/

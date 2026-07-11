@@ -3,6 +3,7 @@ import SwiftUI
 
 enum AppPreferenceKey {
     static let openLiveLogAtLaunch = "drift.openLiveLogAtLaunch"
+    static let virtualTrackpadEnabled = "drift.virtualTrackpadEnabled"
 }
 
 private enum SettingsPage: String, CaseIterable, Identifiable {
@@ -10,6 +11,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
     case timer
     case pomodoro
     case excalidraw
+    case virtualTrackpad
 
     var id: Self { self }
 
@@ -19,6 +21,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
         case .timer: "Timer"
         case .pomodoro: "Pomodoro"
         case .excalidraw: "Excalidraw"
+        case .virtualTrackpad: "Virtual Trackpad"
         }
     }
 
@@ -28,6 +31,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
         case .timer: "timer"
         case .pomodoro: "cup.and.heat.waves"
         case .excalidraw: "pencil.and.scribble"
+        case .virtualTrackpad: "rectangle.and.hand.point.up.left"
         }
     }
 }
@@ -38,6 +42,7 @@ struct SettingsView: View {
     @ObservedObject var timerPreferences: TimerPreferencesStore
     @ObservedObject var pomodoroPreferences: PomodoroPreferencesStore
     let timerWorker: TimerBackgroundWorker
+    let setVirtualTrackpadEnabled: (Bool) -> Void
 
     @State private var selectedPage: SettingsPage? = .general
 
@@ -51,6 +56,7 @@ struct SettingsView: View {
                     settingsLink(.timer)
                     settingsLink(.pomodoro)
                     settingsLink(.excalidraw)
+                    settingsLink(.virtualTrackpad)
                 }
             }
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 220)
@@ -71,6 +77,8 @@ struct SettingsView: View {
                 )
             case .excalidraw:
                 ExcalidrawSettingsPage(documents: documents)
+            case .virtualTrackpad:
+                VirtualTrackpadSettingsPage(setEnabled: setVirtualTrackpadEnabled)
             }
         }
         .frame(minWidth: 680, minHeight: 440)
@@ -79,6 +87,27 @@ struct SettingsView: View {
     private func settingsLink(_ page: SettingsPage) -> some View {
         Label(page.title, systemImage: page.systemImage)
             .tag(page)
+    }
+}
+
+private struct VirtualTrackpadSettingsPage: View {
+    @AppStorage(AppPreferenceKey.virtualTrackpadEnabled)
+    private var isEnabled = false
+    let setEnabled: (Bool) -> Void
+
+    var body: some View {
+        SettingsPageLayout(title: "Virtual Trackpad") {
+            Section("Window") {
+                Toggle("Show virtual trackpad map", isOn: $isEnabled)
+                    .onChange(of: isEnabled) { enabled in
+                        setEnabled(enabled)
+                    }
+            }
+            Section {
+                Text("Displays each active finger in a different color with a live movement trail.")
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
