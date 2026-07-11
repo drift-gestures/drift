@@ -117,6 +117,14 @@ enum KeyboardKey {
     static let `return`: UInt16 = 36
     /// The macOS hardware key code for keypad Enter.
     static let keypadEnter: UInt16 = 76
+    /// The macOS hardware key code for W.
+    static let w: UInt16 = 13
+    /// The macOS hardware key code for S.
+    static let s: UInt16 = 1
+    /// The macOS hardware key code for Up Arrow.
+    static let upArrow: UInt16 = 126
+    /// The macOS hardware key code for Down Arrow.
+    static let downArrow: UInt16 = 125
 
     /// Checks whether a key code should activate a default Return-style HUD action.
     /// - Parameter keyCode: The hardware key code to test.

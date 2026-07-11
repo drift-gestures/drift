@@ -333,6 +333,7 @@ struct TimerHUDView: View {
     init(
         screenSize: CGSize,
         initialMode: TimerHUDMode = .timer,
+        initialTimerDuration: Int = 0,
         initialPomodoroDurations: PomodoroDurations,
         pomodoroSession: PomodoroSession?,
         pomodoroRemainingSeconds: TimeInterval,
@@ -355,6 +356,7 @@ struct TimerHUDView: View {
         _interactionState = State(
             initialValue: TimerHUDInteractionState(
                 mode: initialMode,
+                timerDuration: TimerHUDDurationFormatter.clamped(initialTimerDuration),
                 pomodoroDurations: initialPomodoroDurations
             )
         )

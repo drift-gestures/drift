@@ -2,6 +2,8 @@ import Foundation
 
 /// Stable keys for app-wide background workers.
 enum AppBackgroundWorkerKey: CaseIterable, Hashable {
+    /// Local Excalidraw server and document storage runtime.
+    case excalidraw
     /// Timer and Pomodoro runtime worker.
     case timer
 }
@@ -15,8 +17,14 @@ final class AppBackgroundWorkers {
     /// Creates the default app-wide worker container.
     init() {
         workersByKey = [
+            .excalidraw: ExcalidrawBackgroundWorker(),
             .timer: TimerBackgroundWorker(),
         ]
+    }
+
+    /// Local Excalidraw server, document, and preference runtime worker.
+    var excalidraw: ExcalidrawBackgroundWorker {
+        worker(.excalidraw, as: ExcalidrawBackgroundWorker.self)
     }
 
     /// Timer and Pomodoro runtime worker.
@@ -29,6 +37,13 @@ final class AppBackgroundWorkers {
         AppBackgroundWorkerKey.allCases
             .compactMap { workersByKey[$0] }
             .forEach { $0.applicationDidFinishLaunching() } 
+    }
+
+    /// Stops all app-wide background workers before the app terminates.
+    func applicationWillTerminate() {
+        AppBackgroundWorkerKey.allCases
+            .compactMap { workersByKey[$0] }
+            .forEach { $0.applicationWillTerminate() }
     }
 
     /// Reads a worker by key and concrete type.

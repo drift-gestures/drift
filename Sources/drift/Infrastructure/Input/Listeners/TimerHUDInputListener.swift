@@ -23,7 +23,7 @@ struct TimerHUDInputListener: Listener {
     /// Maximum normalized X coordinate for activation start.
     private let activationStartMaxX: CGFloat = 0.1
     /// Maximum normalized Y coordinate for activation start.
-    private let activationStartMaxY: CGFloat = 0.15
+    private let activationStartMaxY: CGFloat = 0.02
     /// Maximum normalized X coordinate for direct Pomodoro activation.
     private let pomodoroActivationStartMaxX: CGFloat = 0.25
     /// Minimum center movement needed to emit a scroll-style Timer HUD input.
@@ -107,7 +107,7 @@ struct TimerHUDInputListener: Listener {
         if keyPress.keyCode == KeyboardKey.escape {
             return onEscapePress()
         }
-        if KeyboardKey.isReturn(keyPress.keyCode) {
+        if KeyboardKey.isReturn(keyPress.keyCode)  {
             return onReturnPress(keyPress)
         }
         return ListenerDecision()

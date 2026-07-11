@@ -39,9 +39,9 @@ struct ListenerPipelineResult: Sendable {
 
     /// Whether a local key-down should be consumed before it reaches AppKit responders.
     /// - Parameter keyCode: Hardware key code to check.
-    /// - Returns: `true` when a listener claimed the key interaction or requested its suppression.
+    /// - Returns: `true` when a listener explicitly requested suppression for the key.
     func consumesKeyPress(_ keyCode: UInt16) -> Bool {
-        didClaimInteraction || suppressions.containsKeyPress(keyCode)
+        suppressions.containsKeyPress(keyCode)
     }
 }
 

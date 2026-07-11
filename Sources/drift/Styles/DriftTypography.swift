@@ -22,4 +22,8 @@ enum DriftTypography {
     static let timerControlValue: Font = .system(size: 22, weight: .medium)
     /// Duration rail number labels.
     static let timerRailNumber: Font = .system(size: 20)
+    ///
+    static let hudMiniText: Font = .system(size: 10)
+    ///
+    ///
 }

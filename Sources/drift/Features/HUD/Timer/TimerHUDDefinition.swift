@@ -64,7 +64,7 @@ struct TimerHUDDefinition: HudDefinition {
     /// Positions the Timer HUD near the left side of the visible screen.
     /// - Parameter context: Layout inputs for the current screen.
     /// - Returns: The Timer HUD window origin.
-    func position(in context: HUDLayoutContext) -> CGPoint {
+    func position(in context: HUDLayoutContext, size: CGSize) -> CGPoint {
         CGPoint(
             x: 20,
             y: context.screenFrame.maxY/2 - size.height/2
@@ -80,6 +80,7 @@ struct TimerHUDDefinition: HudDefinition {
         TimerHUDRuntimeView(
             screenSize: size,
             timerWorker: timerWorker,
+            timerPreferences: timerWorker.timerPreferences,
             backgroundTimers: timerWorker.backgroundTimers,
             pomodoroPreferences: timerWorker.pomodoroPreferences,
             hudController: hudController,
@@ -94,6 +95,8 @@ private struct TimerHUDRuntimeView: View {
     let screenSize: CGSize
     /// App-owned Timer runtime worker.
     let timerWorker: TimerBackgroundWorker
+    /// Persisted Timer defaults.
+    @ObservedObject var timerPreferences: TimerPreferencesStore
     /// Runtime timer coordinator.
     @ObservedObject var backgroundTimers: BackgroundTimerCoordinator
     /// Persisted Pomodoro duration preferences.
@@ -107,6 +110,7 @@ private struct TimerHUDRuntimeView: View {
         TimerHUDView(
             screenSize: screenSize,
             initialMode: initialMode,
+            initialTimerDuration: timerPreferences.defaultDuration,
             initialPomodoroDurations: pomodoroPreferences.durations,
             pomodoroSession: backgroundTimers.pomodoroSession,
             pomodoroRemainingSeconds: backgroundTimers.pomodoroRemainingSeconds(),

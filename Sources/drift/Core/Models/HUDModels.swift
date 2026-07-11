@@ -27,6 +27,14 @@ enum HUDSessionSource: Sendable {
     case testing
 }
 
+/// AppKit window behavior for a rendered HUD.
+enum HUDWindowBehavior: Equatable, Sendable {
+    /// Focused floating panel that does not claim an embedded text or web editor first responder.
+    case passive
+    /// Key-capable panel for text input and embedded web views.
+    case keyInput
+}
+
 /// Per-HUD state stored by `HUDStore`.
 struct HUDState: Sendable {
     /// HUD-specific state payload.
@@ -56,6 +64,13 @@ struct HUDState: Sendable {
 protocol HUDBackgroundWorker: AnyObject {
     /// Starts app-lifecycle work after launch.
     func applicationDidFinishLaunching()
+    /// Stops app-lifecycle work before termination.
+    func applicationWillTerminate()
+}
+
+extension HUDBackgroundWorker {
+    /// Default no-op termination hook for workers that do not own external resources.
+    func applicationWillTerminate() {}
 }
 
 /// Runtime information used to size and position HUD windows.
@@ -86,9 +101,11 @@ protocol HudDefinition {
     /// The fixed content size for the HUD window.
     var size: CGSize { get }
     /// Computes the HUD window origin for the supplied layout context.
-    /// - Parameter context: The current screen, pointer, and trackpad layout inputs.
+    /// - Parameters:
+    ///   - context: The current screen, pointer, and trackpad layout inputs.
+    ///   - size: The current rendered HUD size.
     /// - Returns: The top-left origin to use for the HUD window.
-    func position(in context: HUDLayoutContext) -> CGPoint
+    func position(in context: HUDLayoutContext, size: CGSize) -> CGPoint
     /// Builds the HUD's SwiftUI content for the supplied runtime context.
     /// - Parameter context: Layout and custom state for this render pass.
     /// - Returns: The HUD content view.

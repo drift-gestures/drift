@@ -50,24 +50,23 @@ In Xcode, select the `drift` scheme and `My Mac`, then press Play. Open the `.xc
 
 ## Command-line build
 
-The project can also be checked with Swift Package Manager:
+The project can also be checked from the command line with the Xcode app target:
 
 ```sh
-env CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swift build --disable-sandbox
+xcodebuild -project drift.xcodeproj -scheme drift -configuration Debug build
 ```
 
-The extra environment variable keeps compiler cache files inside the project. `--disable-sandbox` avoids SwiftPM's package sandbox, which can be blocked inside restricted automation environments.
-
-To create a local `.app` bundle:
+To create a local `.app` bundle and zip from the Xcode app target:
 
 ```sh
 Scripts/create-app-bundle.sh
 ```
 
-The app bundle will be created at:
+The script runs the Xcode build, including the Excalidraw host build phase, then writes:
 
 ```text
 build/drift.app
+build/drift.zip
 ```
 
 ## First self-test
