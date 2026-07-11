@@ -316,7 +316,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             startTrackpadMapPointerMonitoring()
         } else {
             stopTrackpadMapPointerMonitoring()
-            trackpadMapWindow?.orderOut(nil)
+            trackpadMapWindow?.close()
+            trackpadMapWindow = nil
         }
     }
 
