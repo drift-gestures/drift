@@ -20,6 +20,9 @@ struct ExcalidrawHUDInputListener: Listener {
     private let navigationThreshold: CGFloat = 0.055
     private let executeThreshold: CGFloat = 0.22
     private let searchNavigationThreshold = 0.01
+    private let searchScrollSensitivity = 40.0
+    
+    private var scrollOffset: CGFloat = 0
 
     /// Creates an Excalidraw HUD listener.
     init(
@@ -253,10 +256,13 @@ struct ExcalidrawHUDInputListener: Listener {
         }
 
         self.pendingCenter = snapshot.center
-        let offset = deltaY >= 0 ? -1 : 1
-        guard sendSearchScroll(offset: offset) else {
-            clearTracking()
-            return ListenerDecision()
+        scrollOffset += -1 * deltaY * searchScrollSensitivity
+        if (abs(scrollOffset) >= 1) {
+            guard sendSearchScroll(offset: scrollOffset > 0 ? 1 : -1) else {
+                clearTracking()
+                return ListenerDecision()
+            }
+            scrollOffset = scrollOffset - (scrollOffset > 0 ? 1 : -1)
         }
         return ListenerDecision(claimInteraction: true, suppressions: activeSuppressions)
     }

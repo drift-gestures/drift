@@ -17,6 +17,7 @@
 
 - Whenever writing code, think through the architecture first: extensibility, ownership boundaries, and lifecycle responsibilities should be clear and proper before implementation.
 - Do not write code that merely "just works." Prefer code that fits the existing architecture, has the right ownership model, and will be understandable to maintain or extend later.
+- After each codebase change, provide an architecture‑level change map that lists the functions, views, stores, services, or other code owners that were modified, indicates their location within the architecture, and shows how responsibility flows between them. Do not limit the summary to product behavior or line‑by‑line code edits. Include a Mermaid flowchart for this purpose.
 
 ## UI Discipline
 

@@ -18,6 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var trackpadMapLocalPointerMonitor: Any?
     /// State owned by the standalone virtual trackpad feature.
     private let trackpadMapStore = TrackpadMapStore()
+    /// Whether the virtual trackpad is currently visible and should process snapshots.
+    private var isTrackpadMapEnabled = false
     /// Menu item used to reflect and toggle Timer HUD visibility.
     private var timerHUDMenuItem: NSMenuItem?
     /// Menu item used to reflect and toggle Excalidraw HUD visibility.
@@ -68,8 +70,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             self?.handleBackendEvent(event)
         },
         snapshotReceiver: { [weak self] snapshot in
-            self?.hudStore.updateTrackpad(snapshot)
-            self?.trackpadMapStore.update(with: snapshot)
+            guard let self else { return }
+            self.hudStore.updateTrackpad(snapshot)
+            if self.isTrackpadMapEnabled {
+                self.trackpadMapStore.update(with: snapshot)
+            }
         },
         shouldReceiveKeyboardInteraction: { [hudController] _ in
             hudController.isActive(TimerHUDDefinition.hudID) ||
@@ -287,6 +292,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// Opens or closes the standalone virtual trackpad window.
     private func setVirtualTrackpadEnabled(_ enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: AppPreferenceKey.virtualTrackpadEnabled)
+        isTrackpadMapEnabled = enabled
+        trackpadMapStore.setEnabled(enabled)
         if enabled {
             if trackpadMapWindow == nil {
                 let view = TrackpadMapView(store: trackpadMapStore)
@@ -309,7 +316,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             startTrackpadMapPointerMonitoring()
         } else {
             stopTrackpadMapPointerMonitoring()
-            trackpadMapWindow?.close()
+            trackpadMapWindow?.orderOut(nil)
         }
     }
 
@@ -368,6 +375,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// Keeps the persisted setting synchronized when the user closes the map window directly.
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === trackpadMapWindow else { return }
+        isTrackpadMapEnabled = false
+        trackpadMapStore.setEnabled(false)
+        stopTrackpadMapPointerMonitoring()
         UserDefaults.standard.set(false, forKey: AppPreferenceKey.virtualTrackpadEnabled)
     }
 

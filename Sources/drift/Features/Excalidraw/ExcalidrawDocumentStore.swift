@@ -31,6 +31,7 @@ final class ExcalidrawDocumentStore: ObservableObject {
     private let quickSwipeKey: String
     private let metadataURL: URL
     private let thumbnailsFolder: URL
+    private let trashItem: (URL) throws -> Void
 
     /// Creates a local Excalidraw document store.
     init(
@@ -38,7 +39,8 @@ final class ExcalidrawDocumentStore: ObservableObject {
         defaults: UserDefaults = .standard,
         drawingsFolderKey: String = "drift.excalidraw.drawingsFolder",
         quickSwipeKey: String = "drift.excalidraw.quickSwipeAction",
-        metadataFolder: URL? = nil
+        metadataFolder: URL? = nil,
+        trashItem: ((URL) throws -> Void)? = nil
     ) {
         self.fileManager = fileManager
         self.defaults = defaults
@@ -48,6 +50,10 @@ final class ExcalidrawDocumentStore: ObservableObject {
         let supportFolder = metadataFolder ?? Self.defaultApplicationSupportFolder(fileManager: fileManager)
         metadataURL = supportFolder.appendingPathComponent("metadata.json")
         thumbnailsFolder = supportFolder.appendingPathComponent("Thumbnails", isDirectory: true)
+        self.trashItem = trashItem ?? { fileURL in
+            var resultingURL: NSURL?
+            try fileManager.trashItem(at: fileURL, resultingItemURL: &resultingURL)
+        }
 
         let drawingsFolder = defaults.string(forKey: drawingsFolderKey)
             .map(URL.init(fileURLWithPath:))
@@ -261,6 +267,27 @@ final class ExcalidrawDocumentStore: ObservableObject {
         return document(id: newID)
     }
 
+    /// Moves a drawing to the user's Trash and removes its app-owned metadata and thumbnails.
+    func moveToTrash(_ record: ExcalidrawDocumentRecord) throws {
+        guard let current = document(id: record.id) else {
+            try refreshDocuments()
+            return
+        }
+
+        try trashItem(current.fileURL)
+
+        var metadata = loadMetadata()
+        metadata.entries.removeValue(forKey: current.id)
+        do {
+            try saveMetadata(metadata)
+            removeCachedThumbnails(for: current)
+            try refreshDocuments()
+        } catch {
+            try? refreshDocuments()
+            throw error
+        }
+    }
+
     /// Filters local drawings by title.
     func documents(matching query: String) -> [ExcalidrawDocumentRecord] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -283,6 +310,18 @@ final class ExcalidrawDocumentStore: ObservableObject {
             at: thumbnailsFolder,
             withIntermediateDirectories: true
         )
+    }
+
+    /// Removes cached previews associated with a drawing that no longer exists locally.
+    private func removeCachedThumbnails(for record: ExcalidrawDocumentRecord) {
+        let thumbnailURLs = [
+            record.thumbnailURL,
+            record.lightThumbnailURL,
+            record.darkThumbnailURL,
+        ]
+        for thumbnailURL in Set(thumbnailURLs.compactMap { $0 }) {
+            try? fileManager.removeItem(at: thumbnailURL)
+        }
     }
 
     private func record(for fileURL: URL, metadata: MetadataFile) -> ExcalidrawDocumentRecord? {

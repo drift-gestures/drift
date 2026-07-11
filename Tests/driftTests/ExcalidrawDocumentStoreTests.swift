@@ -56,6 +56,36 @@ final class ExcalidrawDocumentStoreTests: XCTestCase {
             true
         )
     }
+
+    func testRefreshRemovesDrawingDeletedOutsideTheApp() throws {
+        let fixture = try StoreFixture()
+        let store = fixture.makeStore()
+        store.start()
+        let record = try store.createNewDrawing()
+
+        try FileManager.default.removeItem(at: record.fileURL)
+        XCTAssertNotNil(store.document(id: record.id))
+
+        try store.refreshDocuments()
+
+        XCTAssertNil(store.document(id: record.id))
+    }
+
+    func testMoveToTrashUsesTrashOperationAndRefreshesDocuments() throws {
+        let fixture = try StoreFixture()
+        var trashedURL: URL?
+        let store = fixture.makeStore { fileURL in
+            trashedURL = fileURL
+            try FileManager.default.removeItem(at: fileURL)
+        }
+        store.start()
+        let record = try store.createNewDrawing()
+
+        try store.moveToTrash(record)
+
+        XCTAssertEqual(trashedURL, record.fileURL)
+        XCTAssertNil(store.document(id: record.id))
+    }
 }
 
 private struct StoreFixture {
@@ -74,12 +104,15 @@ private struct StoreFixture {
     }
 
     @MainActor
-    func makeStore() -> ExcalidrawDocumentStore {
+    func makeStore(
+        trashItem: ((URL) throws -> Void)? = nil
+    ) -> ExcalidrawDocumentStore {
         ExcalidrawDocumentStore(
             defaults: defaults,
             drawingsFolderKey: "drawings",
             quickSwipeKey: "quickSwipe",
-            metadataFolder: support
+            metadataFolder: support,
+            trashItem: trashItem
         )
     }
 }
