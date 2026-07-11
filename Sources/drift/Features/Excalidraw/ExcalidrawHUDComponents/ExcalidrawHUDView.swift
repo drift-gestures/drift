@@ -51,7 +51,8 @@ struct ExcalidrawHUDView: View {
                 documents: documents,
                 searchQuery: $searchQuery,
                 selectedDocumentID: $selectedSearchDocumentID,
-                open: open
+                open: open,
+                moveToTrash: moveToTrash
             )
         case .editor(let documentID):
             ZStack(alignment: .top) {
@@ -89,6 +90,7 @@ struct ExcalidrawHUDView: View {
     }
 
     private func onAppear() {
+        refreshDocumentsFromDisk()
         applyModeLayout()
         worker.modeState.setMode(mode)
         guard !didApplyInitialState else { return }
@@ -251,6 +253,27 @@ struct ExcalidrawHUDView: View {
             setMode(.editor(documentID: opened.id))
         } catch {
             pendingError = "Could not open drawing: \(error)"
+        }
+    }
+
+    private func moveToTrash(_ record: ExcalidrawDocumentRecord) {
+        do {
+            try documents.moveToTrash(record)
+            if selectedSearchDocumentID == record.id {
+                selectedSearchDocumentID = nil
+            }
+            syncSearchSelection()
+        } catch {
+            pendingError = "Could not move drawing to Trash: \(error)"
+        }
+    }
+
+    private func refreshDocumentsFromDisk() {
+        do {
+            try documents.refreshDocuments()
+            syncSearchSelection()
+        } catch {
+            pendingError = "Could not refresh Excalidraw drawings: \(error)"
         }
     }
 

@@ -23,7 +23,7 @@ struct TimerHUDInputListener: Listener {
     /// Maximum normalized X coordinate for activation start.
     private let activationStartMaxX: CGFloat = 0.1
     /// Maximum normalized Y coordinate for activation start.
-    private let activationStartMaxY: CGFloat = 0.02
+    private let activationStartMaxY: CGFloat = 0.07
     /// Maximum normalized X coordinate for direct Pomodoro activation.
     private let pomodoroActivationStartMaxX: CGFloat = 0.25
     /// Minimum center movement needed to emit a scroll-style Timer HUD input.

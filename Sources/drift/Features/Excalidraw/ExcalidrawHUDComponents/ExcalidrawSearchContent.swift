@@ -6,6 +6,7 @@ struct ExcalidrawSearchContent: View {
     @Binding var searchQuery: String
     @Binding var selectedDocumentID: String?
     let open: (ExcalidrawDocumentRecord) -> Void
+    let moveToTrash: (ExcalidrawDocumentRecord) -> Void
 
     @State private var searchFocusRequest = 0
 
@@ -17,7 +18,8 @@ struct ExcalidrawSearchContent: View {
                     placeholder: "Search drawings",
                     focusRequest: searchFocusRequest,
                     submit: openSelectedDocument,
-                    moveSelection: selectResult
+                    moveSelection: selectResult,
+                    deleteSelection: deleteSelectedDocument
                 )
                     .font(DriftTypography.hudAction.weight(.medium))
                     .padding(.horizontal, 25)
@@ -144,6 +146,12 @@ struct ExcalidrawSearchContent: View {
         open(selectedDocument)
     }
 
+    private func deleteSelectedDocument() -> Bool {
+        guard let selectedDocument else { return false }
+        moveToTrash(selectedDocument)
+        return true
+    }
+
     private func selectResult(offset: Int) {
         let records = filteredDocuments
         guard !records.isEmpty else {
@@ -221,13 +229,15 @@ struct ExcalidrawSearchTextField: NSViewRepresentable {
     let focusRequest: Int
     let submit: () -> Void
     let moveSelection: (Int) -> Void
+    let deleteSelection: () -> Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             text: $text,
             focusRequest: focusRequest,
             submit: submit,
-            moveSelection: moveSelection
+            moveSelection: moveSelection,
+            deleteSelection: deleteSelection
         )
     }
 
@@ -241,6 +251,7 @@ struct ExcalidrawSearchTextField: NSViewRepresentable {
         textField.focusRingType = .none
         textField.font = NSFont.systemFont(ofSize: 16, weight: .regular)
         textField.textColor = .labelColor
+        textField.deleteSelection = deleteSelection
         context.coordinator.requestFocus(for: textField)
         return textField
     }
@@ -249,6 +260,8 @@ struct ExcalidrawSearchTextField: NSViewRepresentable {
         context.coordinator.text = $text
         context.coordinator.submit = submit
         context.coordinator.moveSelection = moveSelection
+        context.coordinator.deleteSelection = deleteSelection
+        textField.deleteSelection = deleteSelection
         if textField.stringValue != text {
             textField.stringValue = text
         }
@@ -263,17 +276,20 @@ struct ExcalidrawSearchTextField: NSViewRepresentable {
         var focusRequest: Int
         var submit: () -> Void
         var moveSelection: (Int) -> Void
+        var deleteSelection: () -> Bool
 
         init(
             text: Binding<String>,
             focusRequest: Int,
             submit: @escaping () -> Void,
-            moveSelection: @escaping (Int) -> Void
+            moveSelection: @escaping (Int) -> Void,
+            deleteSelection: @escaping () -> Bool
         ) {
             self.text = text
             self.focusRequest = focusRequest
             self.submit = submit
             self.moveSelection = moveSelection
+            self.deleteSelection = deleteSelection
         }
 
         func requestFocus(for textField: SearchTextField) {
@@ -308,6 +324,10 @@ struct ExcalidrawSearchTextField: NSViewRepresentable {
                 text.wrappedValue = textView.string
                 submit()
                 return true
+            case #selector(NSResponder.deleteToBeginningOfLine(_:)),
+                 #selector(NSResponder.deleteToEndOfLine(_:)):
+                guard NSApp.currentEvent?.modifierFlags.contains(.command) == true else { return false }
+                return deleteSelection()
             default:
                 return false
             }
@@ -315,4 +335,17 @@ struct ExcalidrawSearchTextField: NSViewRepresentable {
     }
 }
 
-final class SearchTextField: NSTextField {}
+final class SearchTextField: NSTextField {
+    var deleteSelection: (() -> Bool)?
+
+    override func keyDown(with event: NSEvent) {
+        let disallowedModifiers: NSEvent.ModifierFlags = [.control, .option, .shift]
+        let isCommandDelete = event.modifierFlags.contains(.command)
+            && event.modifierFlags.intersection(disallowedModifiers).isEmpty
+            && (event.keyCode == 51 || event.keyCode == 117)
+        if isCommandDelete, deleteSelection?() == true {
+            return
+        }
+        super.keyDown(with: event)
+    }
+}
