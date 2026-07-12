@@ -515,7 +515,7 @@ private struct AdvancedGestureListeningOverlay: View {
     var body: some View {
         VStack {
             Label("Listening for advanced gestures", systemImage: "hand.draw")
-                .font(.title)
+                .font(.title2)
                 .foregroundStyle(.white)
                 .padding()
                 .background(Color.black, in: Capsule())
