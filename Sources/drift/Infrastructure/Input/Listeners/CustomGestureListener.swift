@@ -89,6 +89,10 @@ struct CustomGestureListener: Listener {
             return ListenerDecision(suppressions: activeBasicSuppressions)
         case .ended, .cancelled:
             let suppressions = activeBasicSuppressions
+            if snapshot.phase == .began {
+                resetBasicGesture()
+                return handleBasic(snapshot)
+            }
             if snapshot.phase == .ended {
                 resetBasicGesture()
             }

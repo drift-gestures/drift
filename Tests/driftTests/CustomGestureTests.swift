@@ -324,6 +324,43 @@ final class CustomGestureTests: XCTestCase {
         XCTAssertEqual(correctSegment.emittedEvents.count, 1)
     }
 
+    func testBasicGestureRearmsWhenNextContactBeginsWithoutPreviousEndFrame() throws {
+        let suiteName = "CustomGestureTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = CustomGestureStore(defaults: defaults)
+        let gesture = BasicGesture(
+            id: UUID(), name: "bottom up", kind: .edgeSwipe(edge: .bottom, direction: .up),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "test")
+        )
+        store.upsert(gesture)
+        let modeState = CustomGestureModeState(store: store)
+        var listener = CustomGestureListener(store: store, modeState: modeState)
+
+        _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 1, phase: .began))
+        let first = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.3, frame: 2, phase: .changed))
+        _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 3, phase: .began))
+        let second = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.3, frame: 4, phase: .changed))
+
+        XCTAssertEqual(first.emittedEvents.count, 1)
+        XCTAssertEqual(second.emittedEvents.count, 1)
+    }
+
+    func testKeyboardShortcutSequenceReleasesPrimaryKeyAndModifiers() throws {
+        let events = CustomGestureActionPerformer.keyboardEvents(
+            keyCode: 48,
+            modifiers: [.control],
+            source: nil
+        )
+
+        XCTAssertEqual(events.map { $0.getIntegerValueField(.keyboardEventKeycode) }, [59, 48, 48, 59])
+        XCTAssertEqual(events.map { $0.type }, [.keyDown, .keyDown, .keyUp, .keyUp])
+        XCTAssertTrue(events[0].flags.contains(.maskControl))
+        XCTAssertTrue(events[2].flags.contains(.maskControl))
+        XCTAssertFalse(events[3].flags.contains(.maskControl))
+    }
+
     func testCaptureStatePreventsConfiguredGestureActionEvent() throws {
         let suiteName = "CustomGestureTests.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

@@ -165,7 +165,7 @@ private struct BasicGestureEditor: View {
                     Slider(value: $gesture.activationThreshold, in: 0.03...0.50)
                     if category == .swipe {
                         LabeledContent("Edge proximity", value: gesture.edgeProximity.formatted(.number.precision(.fractionLength(2))))
-                        Slider(value: $gesture.edgeProximity, in: 0.03...0.25)
+                        Slider(value: $gesture.edgeProximity, in: 0.01...0.25)
                     }
                 }
                 Section("Action") {
