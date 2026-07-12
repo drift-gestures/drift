@@ -84,7 +84,7 @@ enum SuppressOtherAppEvents: Sendable {
 }
 
 /// Keyboard modifiers normalized across AppKit and CoreGraphics event sources.
-enum KeyboardModifier: Hashable, Sendable {
+enum KeyboardModifier: String, Codable, Hashable, Sendable {
     /// The Command modifier.
     case command
     /// The Control modifier.
@@ -106,6 +106,11 @@ struct KeyboardPressInteraction: Sendable {
     /// Printable characters for the key press, when available from the event source.
     let characters: String?
     /// Modifier keys active when the key press occurred.
+    let modifiers: Set<KeyboardModifier>
+}
+
+/// The complete set of modifier keys currently held by the user.
+struct ModifierStateInteraction: Sendable {
     let modifiers: Set<KeyboardModifier>
 }
 
@@ -148,6 +153,8 @@ enum Interaction: Sendable {
     case trackpadSnapshot(TrackpadSnapshot)
     /// A keyboard press from AppKit or the event tap.
     case keyboardPress(KeyboardPressInteraction)
+    /// A modifier press or release, including otherwise keyless `flagsChanged` events.
+    case modifierStateChanged(ModifierStateInteraction)
     /// A mouse click outside a HUD window.
     case clickOutside(ClickOutsideInteraction)
 
@@ -166,6 +173,8 @@ enum Interaction: Sendable {
             true
         case .keyboardPress(let keyPress):
             keyPress.keyCode == KeyboardKey.escape
+        case .modifierStateChanged:
+            false
         }
     }
 }
@@ -208,6 +217,9 @@ protocol Listener {
     /// listener claims the current interaction.
     var gestureStatus: GestureStatus { get set }
 
+    /// Whether this listener receives trackpad input while the advanced activation key is held.
+    var listensDuringAdvancedGestureMode: Bool { get }
+
     /// Handles one normalized interaction and returns the listener's routing decision.
     /// - Parameter interaction: The interaction to evaluate.
     /// - Returns: The decision produced by this listener.
@@ -215,6 +227,7 @@ protocol Listener {
 }
 
 extension Listener {
+    var listensDuringAdvancedGestureMode: Bool { false }
     /// Convenience overload for listeners that are driven directly by trackpad snapshots.
     /// - Parameter snapshot: The trackpad snapshot to evaluate.
     /// - Returns: The decision produced by this listener.

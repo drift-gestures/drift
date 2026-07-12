@@ -1,3 +1,5 @@
+import Foundation
+
 /// A semantic input action routed to the Timer HUD.
 struct TimerHUDInput: Equatable, Sendable {
     /// The kind of gesture-derived Timer HUD input.
@@ -44,8 +46,20 @@ enum TimerHUDCloseReason: Sendable {
     case escape
 }
 
+/// Identifies which custom recognizer produced an action event.
+enum CustomGestureRecognitionSource: Equatable, Sendable {
+    case basic
+    case advanced
+}
+
 /// Observational events emitted after listeners have already applied their effects.
 enum BackendEvent: Sendable {
+    /// A saved custom gesture passed its configured recognition threshold.
+    case customGestureRecognized(
+        id: UUID,
+        action: CustomGestureAction,
+        source: CustomGestureRecognitionSource
+    )
     /// The Timer HUD was opened by the listener-owned HUD controller.
     case timerHUDDidOpen(source: HUDSessionSource)
     /// The Timer HUD was closed by the listener-owned HUD controller.

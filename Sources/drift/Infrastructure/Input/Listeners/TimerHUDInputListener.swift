@@ -9,6 +9,8 @@ struct TimerHUDInputListener: Listener {
 
     /// Runtime handle used to own Timer HUD lifecycle and message delivery.
     private let hudController: HUDController?
+    private let isTimerEnabled: () -> Bool
+    private let isPomodoroEnabled: () -> Bool
     /// Last contact center used as the baseline for activation or input deltas.
     private var pendingCenter: CGPoint?
     /// Last scale value used to classify pinch input.
@@ -35,9 +37,13 @@ struct TimerHUDInputListener: Listener {
     /// - Parameters:
     ///   - hudController: Optional lifecycle handle for HUD ownership.
     init(
-        hudController: HUDController? = nil
+        hudController: HUDController? = nil,
+        isTimerEnabled: @escaping () -> Bool = { true },
+        isPomodoroEnabled: @escaping () -> Bool = { true }
     ) {
         self.hudController = hudController
+        self.isTimerEnabled = isTimerEnabled
+        self.isPomodoroEnabled = isPomodoroEnabled
     }
 
     /// Routes one interaction to the Timer HUD state machine.
@@ -51,6 +57,8 @@ struct TimerHUDInputListener: Listener {
             return onKeyboardPress(keyPress)
         case .trackpadSnapshot(let snapshot):
             return onTrackpadSnapshot(snapshot)
+        case .modifierStateChanged:
+            return ListenerDecision()
         }
     }
 
@@ -58,6 +66,10 @@ struct TimerHUDInputListener: Listener {
     /// - Parameter snapshot: The trackpad frame to evaluate.
     /// - Returns: The resulting listener decision.
     private mutating func onTrackpadSnapshot(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
+        guard isTimerEnabled() || isPomodoroEnabled() else {
+            reset()
+            return ListenerDecision()
+        }
         switch gestureStatus {
         case .waiting:
             if isTimerHUDActiveForTesting {
@@ -180,7 +192,8 @@ struct TimerHUDInputListener: Listener {
     /// - Returns: A neutral decision after recording `.possible`, or no-op if the snapshot is not eligible.
     private mutating func checkForTimerActivationStart(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
         guard snapshot.fingerCount == 2,
-              let activationMode = activationMode(for: snapshot.center)
+              let activationMode = activationMode(for: snapshot.center),
+              isEnabled(activationMode)
         else {
             return ListenerDecision()
         }
@@ -189,6 +202,13 @@ struct TimerHUDInputListener: Listener {
         pendingActivationMode = activationMode
         gestureStatus = .possible(snapshot)
         return ListenerDecision()
+    }
+
+    private func isEnabled(_ mode: TimerHUDMode) -> Bool {
+        switch mode {
+        case .timer: isTimerEnabled()
+        case .pomodoro: isPomodoroEnabled()
+        }
     }
 
     /// Advances a possible activation gesture until it activates or cancels.

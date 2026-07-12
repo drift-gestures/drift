@@ -3,6 +3,21 @@ import XCTest
 @testable import drift
 
 final class ExcalidrawHUDInputListenerTests: XCTestCase {
+    func testDisabledListenerIgnoresActivationGesture() {
+        var listener = ExcalidrawHUDInputListener(isEnabled: { false })
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.99), timestamp: 0, frame: 1))
+        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.5, y: 0.7), timestamp: 0.4, frame: 2))
+
+        XCTAssertFalse(result.claimInteraction)
+        XCTAssertTrue(result.suppressions.isEmpty)
+        XCTAssertTrue(result.emittedEvents.isEmpty)
+        if case .waiting = listener.gestureStatus {
+        } else {
+            XCTFail("Expected the disabled Excalidraw listener to remain idle.")
+        }
+    }
+
     @MainActor
     func testFastTopMiddleSwipeOpensQuickDocumentMode() async {
         let hudController = makeHUDController()
@@ -148,4 +163,3 @@ final class ExcalidrawHUDInputListenerTests: XCTestCase {
         )
     }
 }
-

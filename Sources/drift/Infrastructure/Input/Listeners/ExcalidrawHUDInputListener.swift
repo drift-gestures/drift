@@ -8,6 +8,7 @@ struct ExcalidrawHUDInputListener: Listener {
 
     private let hudController: HUDController?
     private let modeState: ExcalidrawHUDModeState?
+    private let isEnabled: () -> Bool
     private var pendingCenter: CGPoint?
     private var pendingTimestamp: TimeInterval?
 
@@ -27,13 +28,19 @@ struct ExcalidrawHUDInputListener: Listener {
     /// Creates an Excalidraw HUD listener.
     init(
         hudController: HUDController? = nil,
-        modeState: ExcalidrawHUDModeState? = nil
+        modeState: ExcalidrawHUDModeState? = nil,
+        isEnabled: @escaping () -> Bool = { true }
     ) {
         self.hudController = hudController
         self.modeState = modeState
+        self.isEnabled = isEnabled
     }
 
     mutating func onInteraction(_ interaction: Interaction) -> ListenerDecision {
+        guard isEnabled() else {
+            reset()
+            return ListenerDecision()
+        }
         switch interaction {
         case .clickOutside(let click):
             return onClickOutside(click)
@@ -41,6 +48,8 @@ struct ExcalidrawHUDInputListener: Listener {
             return onKeyboardPress(keyPress)
         case .trackpadSnapshot(let snapshot):
             return onTrackpadSnapshot(snapshot)
+        case .modifierStateChanged:
+            return ListenerDecision()
         }
     }
 

@@ -88,6 +88,33 @@ final class ListenerArchitectureTests: XCTestCase {
         }
     }
 
+    func testDisabledTimerRouteDoesNotStartListener() {
+        var listener = TimerHUDInputListener(isTimerEnabled: { false })
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
+        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 2))
+
+        XCTAssertFalse(result.claimInteraction)
+        XCTAssertTrue(result.suppressions.isEmpty)
+        XCTAssertTrue(result.emittedEvents.isEmpty)
+        if case .waiting = listener.gestureStatus {
+        } else {
+            XCTFail("Expected the disabled Timer route to remain idle.")
+        }
+    }
+
+    func testDisabledPomodoroRouteDoesNotDisableTimerRoute() {
+        var listener = TimerHUDInputListener(isPomodoroEnabled: { false })
+
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.1, y: 0.1), frame: 1))
+        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.1, y: 0.31), frame: 2))
+
+        XCTAssertTrue(result.claimInteraction)
+        guard case .timerHUDDidOpen = result.emittedEvents.first else {
+            return XCTFail("Expected the enabled Timer route to remain active.")
+        }
+    }
+
     @MainActor
     func testBottomEdgeUpSwipeFurtherRightOpensPomodoroMode() async {
         let visibilityState = HUDVisibilityState()

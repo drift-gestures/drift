@@ -26,10 +26,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var excalidrawHUDMenuItem: NSMenuItem?
     /// In-memory diagnostics store displayed by the live log.
     private let activityLog = ActivityLogStore()
+    /// Device-local source of truth for all user-created gestures.
+    private let customGestureStore = CustomGestureStore()
+    /// Shared gate that makes the global advanced-gesture activation key exclusive.
+    private lazy var customGestureModeState = CustomGestureModeState(store: customGestureStore)
+    /// Shared exclusive gate used while Settings records or tests a gesture.
+    private let customGestureCaptureState = CustomGestureCaptureState()
+    /// Full-screen dismissal surface shown while runtime advanced gestures are active.
+    private lazy var advancedGestureOverlayPresenter = AdvancedGestureOverlayPresenter { [weak self] in
+        self?.customGestureModeState.suspendUntilModifiersReleased()
+    }
+    /// Main-actor recorder/tester fed by the same raw snapshots as normal listeners.
+    private lazy var customGestureRecordingSession = CustomGestureRecordingSession(
+        modeState: customGestureModeState,
+        captureState: customGestureCaptureState
+    )
+    /// Observable Settings adapter for the device-local custom gesture library.
+    private lazy var customGestureSettingsModel = CustomGestureSettingsModel(
+        store: customGestureStore,
+        recordingSession: customGestureRecordingSession
+    )
     /// Thread-safe HUD visibility mirror shared with listener code.
     private let hudVisibilityState = HUDVisibilityState()
     /// Thread-safe marker for HUDs opened by temporary testing controls.
     private let hudTestingState = HUDTestingState()
+    /// Persisted gates read synchronously by gesture listeners.
+    private let featureListenerState = FeatureListenerState()
     /// Message bus for delivering backend inputs to visible HUD views.
     private let hudMessages = HUDMessageBus()
     /// Main-actor source of truth for HUD visibility and state.
@@ -58,20 +80,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private lazy var swiftBridge = SwiftBridge(
         activityLog: activityLog,
         listeners: [
+            CustomGestureListener(
+                store: customGestureStore,
+                modeState: customGestureModeState,
+                captureState: customGestureCaptureState
+            ),
             TimerHUDInputListener(
-                hudController: hudController
+                hudController: hudController,
+                isTimerEnabled: { [featureListenerState] in
+                    featureListenerState.isEnabled(.timer)
+                },
+                isPomodoroEnabled: { [featureListenerState] in
+                    featureListenerState.isEnabled(.pomodoro)
+                }
             ),
             ExcalidrawHUDInputListener(
                 hudController: hudController,
-                modeState: hudRegistry.excalidrawModeState
+                modeState: hudRegistry.excalidrawModeState,
+                isEnabled: { [featureListenerState] in
+                    featureListenerState.isEnabled(.excalidraw)
+                }
             )
         ],
+        customGestureModeState: customGestureModeState,
+        advancedGestureModeReceiver: { [weak self] isActive in
+            guard let self else { return }
+            self.advancedGestureOverlayPresenter.setActive(
+                isActive && !self.customGestureCaptureState.isActive
+            )
+        },
         eventReceiver: { [weak self] event in
             self?.handleBackendEvent(event)
         },
         snapshotReceiver: { [weak self] snapshot in
             guard let self else { return }
             self.hudStore.updateTrackpad(snapshot)
+            self.customGestureRecordingSession.receive(snapshot)
             if self.isTrackpadMapEnabled {
                 self.trackpadMapStore.update(with: snapshot)
             }
@@ -109,6 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func applicationWillTerminate(_ notification: Notification) {
         NotificationCenter.default.removeObserver(self)
         stopTrackpadMapPointerMonitoring()
+        advancedGestureOverlayPresenter.setActive(false)
         swiftBridge.stop()
         hudRegistry.applicationWillTerminate()
     }
@@ -202,6 +247,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// - Parameter event: The event emitted by the input bridge.
     private func handleBackendEvent(_ event: BackendEvent) {
         switch event {
+        case .customGestureRecognized(let id, let action, let source):
+            CustomGestureActionPerformer.perform(action)
+            if source == .basic {
+                NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+            }
+            activityLog.record("Performed custom gesture \(id).", category: .action)
         case .timerHUDDidOpen:
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
             activityLog.record("Opened Timer HUD from the bottom-left swipe.", category: .action)
@@ -271,7 +322,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 documents: hudRegistry.excalidrawWorker.documents,
                 timerPreferences: timerWorker.timerPreferences,
                 pomodoroPreferences: timerWorker.pomodoroPreferences,
+                customGestures: customGestureSettingsModel,
                 timerWorker: timerWorker,
+                setTimerListenerEnabled: { [featureListenerState] enabled in
+                    featureListenerState.setEnabled(enabled, for: .timer)
+                },
+                setPomodoroListenerEnabled: { [featureListenerState] enabled in
+                    featureListenerState.setEnabled(enabled, for: .pomodoro)
+                },
+                setExcalidrawListenerEnabled: { [featureListenerState] enabled in
+                    featureListenerState.setEnabled(enabled, for: .excalidraw)
+                },
                 setVirtualTrackpadEnabled: { [weak self] enabled in
                     self?.setVirtualTrackpadEnabled(enabled)
                 }
@@ -395,4 +456,82 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     @objc private func quit() {
         NSApp.terminate(nil)
     }
+}
+
+/// Owns the screen-sized dismissal surface for the global advanced-gesture mode.
+@MainActor
+private final class AdvancedGestureOverlayPresenter {
+    private var panels: [NSPanel] = []
+    private let dismiss: () -> Void
+
+    init(dismiss: @escaping () -> Void) {
+        self.dismiss = dismiss
+    }
+
+    func setActive(_ isActive: Bool) {
+        guard isActive != !panels.isEmpty else { return }
+        if isActive {
+            panels = NSScreen.screens.map(makePanel(for:))
+            panels.forEach { $0.orderFrontRegardless() }
+        } else {
+            panels.forEach { $0.close() }
+            panels.removeAll()
+        }
+    }
+
+    private func makePanel(for screen: NSScreen) -> NSPanel {
+        let panel = NSPanel(
+            contentRect: screen.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.hidesOnDeactivate = false
+        panel.ignoresMouseEvents = false
+        panel.isReleasedWhenClosed = false
+        panel.contentView = AdvancedGestureOverlayHostingView(
+            rootView: AdvancedGestureListeningOverlay { [weak self] in
+                self?.dismissFromClick()
+            }
+        )
+        return panel
+    }
+
+    private func dismissFromClick() {
+        dismiss()
+        setActive(false)
+    }
+}
+
+/// Screen-filling visual feedback for the held advanced-gesture activation binding.
+private struct AdvancedGestureListeningOverlay: View {
+    let dismiss: () -> Void
+
+    var body: some View {
+        VStack {
+            Label("Listening for advanced gestures", systemImage: "hand.draw")
+                .font(.title2)
+                .foregroundStyle(.white)
+                .padding()
+                .background(Color.black, in: Capsule())
+            Spacer()
+        }
+        .padding(.top, 50)
+        .safeAreaPadding(.top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: dismiss)
+        .ignoresSafeArea()
+        .accessibilityLabel("Advanced gestures are being listened to. Click to stop listening.")
+    }
+}
+
+/// Ensures the first click reaches the clear overlay even while drift is inactive.
+private final class AdvancedGestureOverlayHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

@@ -53,11 +53,13 @@ final class ListenerPipeline {
     private var claimedListenerIndex: Int?
     /// Listeners cancelled by the current owner that still need reset frames.
     private var cancelledListenerIndices: Set<Int> = []
+    private let isAdvancedGestureModeActive: () -> Bool
 
     /// Creates a pipeline from an ordered listener list.
     /// - Parameter listeners: Listeners to evaluate in registration order.
-    init(listeners: [any Listener]) {
+    init(listeners: [any Listener], isAdvancedGestureModeActive: @escaping () -> Bool = { false }) {
         self.listeners = listeners
+        self.isAdvancedGestureModeActive = isAdvancedGestureModeActive
     }
 
     /// Processes a trackpad snapshot through the pipeline.
@@ -81,6 +83,11 @@ final class ListenerPipeline {
         var didClaim = false
 
         for index in listeners.indices {
+            if isAdvancedGestureModeActive(),
+               interaction.trackpadSnapshot != nil,
+               !listeners[index].listensDuringAdvancedGestureMode {
+                continue
+            }
             let decision = listeners[index].onInteraction(interaction)
             events.append(contentsOf: decision.emittedEvents)
             suppressions.formUnion(decision.suppressions)
