@@ -50,6 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let hudVisibilityState = HUDVisibilityState()
     /// Thread-safe marker for HUDs opened by temporary testing controls.
     private let hudTestingState = HUDTestingState()
+    /// Persisted gates read synchronously by gesture listeners.
+    private let featureListenerState = FeatureListenerState()
     /// Message bus for delivering backend inputs to visible HUD views.
     private let hudMessages = HUDMessageBus()
     /// Main-actor source of truth for HUD visibility and state.
@@ -84,11 +86,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 captureState: customGestureCaptureState
             ),
             TimerHUDInputListener(
-                hudController: hudController
+                hudController: hudController,
+                isTimerEnabled: { [featureListenerState] in
+                    featureListenerState.isEnabled(.timer)
+                },
+                isPomodoroEnabled: { [featureListenerState] in
+                    featureListenerState.isEnabled(.pomodoro)
+                }
             ),
             ExcalidrawHUDInputListener(
                 hudController: hudController,
-                modeState: hudRegistry.excalidrawModeState
+                modeState: hudRegistry.excalidrawModeState,
+                isEnabled: { [featureListenerState] in
+                    featureListenerState.isEnabled(.excalidraw)
+                }
             )
         ],
         customGestureModeState: customGestureModeState,
@@ -313,6 +324,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 pomodoroPreferences: timerWorker.pomodoroPreferences,
                 customGestures: customGestureSettingsModel,
                 timerWorker: timerWorker,
+                setTimerListenerEnabled: { [featureListenerState] enabled in
+                    featureListenerState.setEnabled(enabled, for: .timer)
+                },
+                setPomodoroListenerEnabled: { [featureListenerState] enabled in
+                    featureListenerState.setEnabled(enabled, for: .pomodoro)
+                },
+                setExcalidrawListenerEnabled: { [featureListenerState] enabled in
+                    featureListenerState.setEnabled(enabled, for: .excalidraw)
+                },
                 setVirtualTrackpadEnabled: { [weak self] enabled in
                     self?.setVirtualTrackpadEnabled(enabled)
                 }

@@ -4,6 +4,52 @@ import SwiftUI
 enum AppPreferenceKey {
     static let openLiveLogAtLaunch = "drift.openLiveLogAtLaunch"
     static let virtualTrackpadEnabled = "drift.virtualTrackpadEnabled"
+    static let timerListenerEnabled = "drift.timerListenerEnabled"
+    static let pomodoroListenerEnabled = "drift.pomodoroListenerEnabled"
+    static let excalidrawListenerEnabled = "drift.excalidrawListenerEnabled"
+}
+
+/// Thread-safe, persisted feature gates shared by Settings and input listeners.
+final class FeatureListenerState: @unchecked Sendable {
+    enum Feature: CaseIterable {
+        case timer
+        case pomodoro
+        case excalidraw
+
+        var preferenceKey: String {
+            switch self {
+            case .timer: AppPreferenceKey.timerListenerEnabled
+            case .pomodoro: AppPreferenceKey.pomodoroListenerEnabled
+            case .excalidraw: AppPreferenceKey.excalidrawListenerEnabled
+            }
+        }
+    }
+
+    private let lock = NSLock()
+    private var enabledFeatures: Set<Feature>
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        enabledFeatures = Set(Feature.allCases.filter { feature in
+            defaults.object(forKey: feature.preferenceKey) == nil || defaults.bool(forKey: feature.preferenceKey)
+        })
+    }
+
+    func isEnabled(_ feature: Feature) -> Bool {
+        lock.withLock { enabledFeatures.contains(feature) }
+    }
+
+    func setEnabled(_ enabled: Bool, for feature: Feature) {
+        lock.withLock {
+            if enabled {
+                enabledFeatures.insert(feature)
+            } else {
+                enabledFeatures.remove(feature)
+            }
+        }
+        defaults.set(enabled, forKey: feature.preferenceKey)
+    }
 }
 
 private enum SettingsPage: String, CaseIterable, Identifiable {
@@ -46,6 +92,9 @@ struct SettingsView: View {
     @ObservedObject var pomodoroPreferences: PomodoroPreferencesStore
     @ObservedObject var customGestures: CustomGestureSettingsModel
     let timerWorker: TimerBackgroundWorker
+    let setTimerListenerEnabled: (Bool) -> Void
+    let setPomodoroListenerEnabled: (Bool) -> Void
+    let setExcalidrawListenerEnabled: (Bool) -> Void
     let setVirtualTrackpadEnabled: (Bool) -> Void
 
     @State private var selectedPage: SettingsPage? = .general
@@ -71,17 +120,22 @@ struct SettingsView: View {
                 GeneralSettingsPage()
             case .timer:
                 TimerSettingsPage(
-                    preferences: timerPreferences
+                    preferences: timerPreferences,
+                    setListenerEnabled: setTimerListenerEnabled
                 )
             case .pomodoro:
                 PomodoroSettingsPage(
                     preferences: pomodoroPreferences,
+                    setListenerEnabled: setPomodoroListenerEnabled,
                     save: { durations in
                         timerWorker.savePomodoroDurations(durations)
                     }
                 )
             case .excalidraw:
-                ExcalidrawSettingsPage(documents: documents)
+                ExcalidrawSettingsPage(
+                    documents: documents,
+                    setListenerEnabled: setExcalidrawListenerEnabled
+                )
             case .customGestures:
                 CustomGestureSettingsPage(model: customGestures)
             case .virtualTrackpad:
@@ -151,15 +205,25 @@ private struct GeneralSettingsPage: View {
 
 private struct TimerSettingsPage: View {
     @ObservedObject var preferences: TimerPreferencesStore
+    @AppStorage(AppPreferenceKey.timerListenerEnabled)
+    private var isListenerEnabled = true
+    let setListenerEnabled: (Bool) -> Void
     @State private var defaultDuration: Int
 
-    init(preferences: TimerPreferencesStore) {
+    init(preferences: TimerPreferencesStore, setListenerEnabled: @escaping (Bool) -> Void) {
         self.preferences = preferences
+        self.setListenerEnabled = setListenerEnabled
         _defaultDuration = State(initialValue: preferences.defaultDuration)
     }
 
     var body: some View {
         SettingsPageLayout(title: "Timer") {
+            Section("Feature") {
+                Toggle("Enable Timer gesture", isOn: $isListenerEnabled)
+                    .onChange(of: isListenerEnabled) { _, enabled in
+                        setListenerEnabled(enabled)
+                    }
+            }
             Section("Defaults") {
                 Stepper(
                     "Default duration: \(defaultDuration) min",
@@ -176,20 +240,31 @@ private struct TimerSettingsPage: View {
 
 private struct PomodoroSettingsPage: View {
     @ObservedObject var preferences: PomodoroPreferencesStore
+    @AppStorage(AppPreferenceKey.pomodoroListenerEnabled)
+    private var isListenerEnabled = true
+    let setListenerEnabled: (Bool) -> Void
     let save: (PomodoroDurations) -> Void
     @State private var durations: PomodoroDurations
 
     init(
         preferences: PomodoroPreferencesStore,
+        setListenerEnabled: @escaping (Bool) -> Void,
         save: @escaping (PomodoroDurations) -> Void
     ) {
         self.preferences = preferences
+        self.setListenerEnabled = setListenerEnabled
         self.save = save
         _durations = State(initialValue: preferences.durations)
     }
 
     var body: some View {
         SettingsPageLayout(title: "Pomodoro") {
+            Section("Feature") {
+                Toggle("Enable Pomodoro gesture", isOn: $isListenerEnabled)
+                    .onChange(of: isListenerEnabled) { _, enabled in
+                        setListenerEnabled(enabled)
+                    }
+            }
             Section("Durations") {
                 ForEach(PomodoroDurationField.allCases) { field in
                     Stepper(
@@ -213,15 +288,25 @@ private struct PomodoroSettingsPage: View {
 
 private struct ExcalidrawSettingsPage: View {
     @ObservedObject var documents: ExcalidrawDocumentStore
+    @AppStorage(AppPreferenceKey.excalidrawListenerEnabled)
+    private var isListenerEnabled = true
+    let setListenerEnabled: (Bool) -> Void
     @State private var quickSwipeAction: ExcalidrawQuickSwipeAction
 
-    init(documents: ExcalidrawDocumentStore) {
+    init(documents: ExcalidrawDocumentStore, setListenerEnabled: @escaping (Bool) -> Void) {
         self.documents = documents
+        self.setListenerEnabled = setListenerEnabled
         _quickSwipeAction = State(initialValue: documents.preferences.quickSwipeAction)
     }
 
     var body: some View {
         SettingsPageLayout(title: "Excalidraw") {
+            Section("Feature") {
+                Toggle("Enable Excalidraw gesture", isOn: $isListenerEnabled)
+                    .onChange(of: isListenerEnabled) { _, enabled in
+                        setListenerEnabled(enabled)
+                    }
+            }
             Section("Quick Swipe") {
                 Picker(
                     "Action",
