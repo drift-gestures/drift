@@ -514,13 +514,14 @@ private struct AdvancedGestureListeningOverlay: View {
 
     var body: some View {
         VStack {
-            Spacer()
             Label("Listening for advanced gestures", systemImage: "hand.draw")
                 .font(.title)
+                .foregroundStyle(.white)
                 .padding()
-                .background(.ultraThinMaterial, in: Capsule())
+                .background(Color.black.opacity(0.34), in: Capsule())
+            Spacer()
         }
-        .safeAreaPadding(.bottom)
+        .safeAreaPadding(.top)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onTapGesture(perform: dismiss)
