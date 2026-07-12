@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 import Foundation
 
-/// Executes the three action types supported by saved custom gestures.
+/// Executes the action types supported by saved custom gestures.
 enum CustomGestureActionPerformer {
     @MainActor
     static func perform(_ action: CustomGestureAction) {
@@ -15,6 +15,9 @@ enum CustomGestureActionPerformer {
         case .openApplication(let bundleIdentifier):
             guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
             NSWorkspace.shared.openApplication(at: url, configuration: .init())
+        case .openURL:
+            guard let url = action.urlToOpen else { return }
+            NSWorkspace.shared.open(url)
         case .runScript(let executableURL, let arguments):
             Task.detached {
                 let process = Process()

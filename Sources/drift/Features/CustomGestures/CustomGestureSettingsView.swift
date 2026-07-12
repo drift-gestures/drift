@@ -499,6 +499,7 @@ private struct GestureTrackpadPreview: View {
 private enum GestureActionType: String, CaseIterable, Identifiable {
     case shortcut = "Keyboard Shortcut"
     case application = "Open Application"
+    case url = "Open URL"
     case script = "Run Script"
     var id: Self { self }
 }
@@ -518,6 +519,8 @@ private struct GestureActionEditor: View {
         case .openApplication(let bundleIdentifier):
             LabeledContent("Application", value: applicationName(bundleIdentifier))
             Button("Choose Application…", action: chooseApplication)
+        case .openURL:
+            TextField("URL", text: url)
         case .runScript(let executableURL, _):
             LabeledContent(
                 "Script",
@@ -536,6 +539,7 @@ private struct GestureActionEditor: View {
                 switch action {
                 case .keyboardShortcut: .shortcut
                 case .openApplication: .application
+                case .openURL: .url
                 case .runScript: .script
                 }
             },
@@ -545,6 +549,8 @@ private struct GestureActionEditor: View {
                     action = .keyboardShortcut(keyCode: 49, modifiers: [.command])
                 case .application:
                     action = .openApplication(bundleIdentifier: "")
+                case .url:
+                    action = .openURL(url: "")
                 case .script:
                     action = .runScript(
                         executableURL: GestureActionDefaults.unselectedScriptURL,
@@ -582,6 +588,18 @@ private struct GestureActionEditor: View {
                     executableURL: url,
                     arguments: value.split(whereSeparator: \.isWhitespace).map(String.init)
                 )
+            }
+        )
+    }
+
+    private var url: Binding<String> {
+        Binding(
+            get: {
+                guard case .openURL(let value) = action else { return "" }
+                return value
+            },
+            set: { value in
+                action = .openURL(url: value.trimmingCharacters(in: .whitespacesAndNewlines))
             }
         )
     }
@@ -656,6 +674,8 @@ private extension CustomGestureAction {
             return true
         case .openApplication(let bundleIdentifier):
             return !bundleIdentifier.isEmpty
+        case .openURL:
+            return urlToOpen != nil
         case .runScript(let url, _):
             return url != GestureActionDefaults.unselectedScriptURL
         }
@@ -670,6 +690,7 @@ private extension CustomGestureAction {
                 return "Open application"
             }
             return "Open \(url.deletingPathExtension().lastPathComponent)"
+        case .openURL(let url): return "Open \(url)"
         case .runScript(let url, _): return "Run \(url.lastPathComponent)"
         }
     }

@@ -10,7 +10,18 @@ enum InputBackendName: String {
 enum CustomGestureAction: Codable, Equatable, Sendable {
     case keyboardShortcut(keyCode: UInt16, modifiers: Set<KeyboardModifier>)
     case openApplication(bundleIdentifier: String)
+    case openURL(url: String)
     case runScript(executableURL: URL, arguments: [String])
+}
+
+extension CustomGestureAction {
+    /// The configured URL when this action contains a valid, scheme-bearing destination.
+    var urlToOpen: URL? {
+        guard case .openURL(let value) = self else { return nil }
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmedValue), url.scheme != nil else { return nil }
+        return url
+    }
 }
 
 /// A built-in gesture shape configured by the user.

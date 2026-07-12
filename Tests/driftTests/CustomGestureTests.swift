@@ -3,6 +3,20 @@ import XCTest
 @testable import drift
 
 final class CustomGestureTests: XCTestCase {
+    func testOpenURLActionRoundTripsAndRequiresAScheme() throws {
+        let action = CustomGestureAction.openURL(url: " https://example.com/path?source=gesture#details ")
+
+        let decoded = try JSONDecoder().decode(
+            CustomGestureAction.self,
+            from: JSONEncoder().encode(action)
+        )
+
+        XCTAssertEqual(decoded, action)
+        XCTAssertEqual(action.urlToOpen?.absoluteString, "https://example.com/path?source=gesture#details")
+        XCTAssertNil(CustomGestureAction.openURL(url: "example.com/path").urlToOpen)
+        XCTAssertNil(CustomGestureAction.openURL(url: "not a URL").urlToOpen)
+    }
+
     func testAdvancedRecordingIsResampledToFixedSize() {
         let snapshots = (0..<12).map { index in
             trackpadSnapshot(x: Double(index) / 11, frame: index, phase: index == 0 ? .began : .changed)
