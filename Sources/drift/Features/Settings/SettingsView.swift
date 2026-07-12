@@ -11,6 +11,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
     case timer
     case pomodoro
     case excalidraw
+    case customGestures
     case virtualTrackpad
 
     var id: Self { self }
@@ -21,6 +22,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
         case .timer: "Timer"
         case .pomodoro: "Pomodoro"
         case .excalidraw: "Excalidraw"
+        case .customGestures: "Custom Gestures"
         case .virtualTrackpad: "Virtual Trackpad"
         }
     }
@@ -31,6 +33,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
         case .timer: "timer"
         case .pomodoro: "cup.and.heat.waves"
         case .excalidraw: "pencil.and.scribble"
+        case .customGestures: "hand.draw"
         case .virtualTrackpad: "rectangle.and.hand.point.up.left"
         }
     }
@@ -41,6 +44,7 @@ struct SettingsView: View {
     @ObservedObject var documents: ExcalidrawDocumentStore
     @ObservedObject var timerPreferences: TimerPreferencesStore
     @ObservedObject var pomodoroPreferences: PomodoroPreferencesStore
+    @ObservedObject var customGestures: CustomGestureSettingsModel
     let timerWorker: TimerBackgroundWorker
     let setVirtualTrackpadEnabled: (Bool) -> Void
 
@@ -56,6 +60,7 @@ struct SettingsView: View {
                     settingsLink(.timer)
                     settingsLink(.pomodoro)
                     settingsLink(.excalidraw)
+                    settingsLink(.customGestures)
                     settingsLink(.virtualTrackpad)
                 }
             }
@@ -77,6 +82,8 @@ struct SettingsView: View {
                 )
             case .excalidraw:
                 ExcalidrawSettingsPage(documents: documents)
+            case .customGestures:
+                CustomGestureSettingsPage(model: customGestures)
             case .virtualTrackpad:
                 VirtualTrackpadSettingsPage(setEnabled: setVirtualTrackpadEnabled)
             }

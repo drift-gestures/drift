@@ -36,6 +36,8 @@ final class EventSuppressionController: @unchecked Sendable {
     private var suppressedKeyUps: Set<UInt16> = []
     /// Optional receiver used to turn global key-down events into listener suppression requests.
     private var keyboardInteractionReceiver: ((KeyboardPressInteraction) -> Set<SuppressionRequest>)?
+    /// Receiver for modifier-state changes used by advanced-gesture activation.
+    private var modifierStateReceiver: ((ModifierStateInteraction) -> Void)?
     /// Predicate that decides whether an unsuppressed global key-down should be forwarded.
     private var shouldReceiveKeyboardInteraction: ((KeyboardPressInteraction) -> Bool)?
     /// Whether the installed event tap should include keyboard event types.
@@ -71,10 +73,12 @@ final class EventSuppressionController: @unchecked Sendable {
     /// - Returns: `true` when an event tap is installed and ready.
     func start(
         keyboardInteractionReceiver: ((KeyboardPressInteraction) -> Set<SuppressionRequest>)? = nil,
-        shouldReceiveKeyboardInteraction: ((KeyboardPressInteraction) -> Bool)? = nil
+        shouldReceiveKeyboardInteraction: ((KeyboardPressInteraction) -> Bool)? = nil,
+        modifierStateReceiver: ((ModifierStateInteraction) -> Void)? = nil
     ) -> Bool {
         self.keyboardInteractionReceiver = keyboardInteractionReceiver
         self.shouldReceiveKeyboardInteraction = shouldReceiveKeyboardInteraction
+        self.modifierStateReceiver = modifierStateReceiver
         requestMissingPermissionsOnce()
         startPermissionChecks()
         return refreshTapForCurrentPermissions()
@@ -99,6 +103,7 @@ final class EventSuppressionController: @unchecked Sendable {
         stopPermissionChecks()
         terminateTap()
         keyboardInteractionReceiver = nil
+        modifierStateReceiver = nil
         shouldReceiveKeyboardInteraction = nil
         listensForKeyboardEvents = false
         didRequestMissingPermissions = false
@@ -167,7 +172,7 @@ final class EventSuppressionController: @unchecked Sendable {
             .otherMouseDown, .otherMouseUp,
         ]
         if listensForKeyboardEvents {
-            types.append(contentsOf: [.keyDown, .keyUp])
+            types.append(contentsOf: [.keyDown, .keyUp, .flagsChanged])
         }
         let mask = types.reduce(CGEventMask(0)) { mask, type in
             mask | (CGEventMask(1) << type.rawValue)
@@ -219,6 +224,10 @@ final class EventSuppressionController: @unchecked Sendable {
         }
         if type == .keyUp {
             return filterKeyUp(event)
+        }
+        if type == .flagsChanged {
+            modifierStateReceiver?(ModifierStateInteraction(modifiers: event.flags.keyboardModifiers))
+            return Unmanaged.passUnretained(event)
         }
 
         lock.lock()
@@ -449,33 +458,24 @@ private extension KeyboardPressInteraction {
     /// Creates a normalized keyboard interaction from a CoreGraphics keyboard event.
     /// - Parameter event: The CoreGraphics event to translate.
     init(event: CGEvent) {
-        var modifiers = Set<KeyboardModifier>()
-        let flags = event.flags
-
-        if flags.contains(.maskCommand) {
-            modifiers.insert(.command)
-        }
-        if flags.contains(.maskControl) {
-            modifiers.insert(.control)
-        }
-        if flags.contains(.maskAlternate) {
-            modifiers.insert(.option)
-        }
-        if flags.contains(.maskShift) {
-            modifiers.insert(.shift)
-        }
-        if flags.contains(.maskAlphaShift) {
-            modifiers.insert(.capsLock)
-        }
-        if flags.contains(.maskSecondaryFn) {
-            modifiers.insert(.function)
-        }
-
         self.init(
             keyCode: UInt16(event.getIntegerValueField(.keyboardEventKeycode)),
             characters: nil,
-            modifiers: modifiers
+            modifiers: event.flags.keyboardModifiers
         )
+    }
+}
+
+private extension CGEventFlags {
+    var keyboardModifiers: Set<KeyboardModifier> {
+        var modifiers = Set<KeyboardModifier>()
+        if contains(.maskCommand) { modifiers.insert(.command) }
+        if contains(.maskControl) { modifiers.insert(.control) }
+        if contains(.maskAlternate) { modifiers.insert(.option) }
+        if contains(.maskShift) { modifiers.insert(.shift) }
+        if contains(.maskAlphaShift) { modifiers.insert(.capsLock) }
+        if contains(.maskSecondaryFn) { modifiers.insert(.function) }
+        return modifiers
     }
 }
 

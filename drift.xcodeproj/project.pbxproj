@@ -59,6 +59,13 @@
 		10000000000000000000004E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004E /* SettingsView.swift */; };
 		10000000000000000000004F /* TrackpadMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004F /* TrackpadMapStore.swift */; };
 		100000000000000000000050 /* TrackpadMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000050 /* TrackpadMapView.swift */; };
+		100000000000000000000051 /* CustomGestureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000051 /* CustomGestureStore.swift */; };
+		100000000000000000000052 /* AdvancedGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000052 /* AdvancedGestureRecognizer.swift */; };
+		100000000000000000000053 /* CustomGestureActionPerformer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000053 /* CustomGestureActionPerformer.swift */; };
+		100000000000000000000054 /* CustomGestureListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000054 /* CustomGestureListener.swift */; };
+		100000000000000000000055 /* CustomGestureRecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000055 /* CustomGestureRecordingSession.swift */; };
+		100000000000000000000056 /* KeyBindingRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000056 /* KeyBindingRecorder.swift */; };
+		100000000000000000000057 /* CustomGestureSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000057 /* CustomGestureSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -118,6 +125,13 @@
 		20000000000000000000004E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		20000000000000000000004F /* TrackpadMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadMapStore.swift; sourceTree = "<group>"; };
 		200000000000000000000050 /* TrackpadMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadMapView.swift; sourceTree = "<group>"; };
+		200000000000000000000051 /* CustomGestureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomGestureStore.swift; sourceTree = "<group>"; };
+		200000000000000000000052 /* AdvancedGestureRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedGestureRecognizer.swift; sourceTree = "<group>"; };
+		200000000000000000000053 /* CustomGestureActionPerformer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomGestureActionPerformer.swift; sourceTree = "<group>"; };
+		200000000000000000000054 /* CustomGestureListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomGestureListener.swift; sourceTree = "<group>"; };
+		200000000000000000000055 /* CustomGestureRecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomGestureRecordingSession.swift; sourceTree = "<group>"; };
+		200000000000000000000056 /* KeyBindingRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBindingRecorder.swift; sourceTree = "<group>"; };
+		200000000000000000000057 /* CustomGestureSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomGestureSettingsView.swift; sourceTree = "<group>"; };
 		AE84834E2FE19DCA00446B38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -260,6 +274,7 @@
 		40000000000000000000000C /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				40000000000000000000001D /* CustomGestures */,
 				400000000000000000000018 /* Excalidraw */,
 				400000000000000000000015 /* HUD */,
 				40000000000000000000000D /* Logging */,
@@ -351,6 +366,7 @@
 		400000000000000000000016 /* Listeners */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000054 /* CustomGestureListener.swift */,
 				20000000000000000000003A /* ExcalidrawHUDInputListener.swift */,
 				20000000000000000000002A /* TimerHUDInputListener.swift */,
 			);
@@ -423,6 +439,19 @@
 				200000000000000000000050 /* TrackpadMapView.swift */,
 			);
 			path = TrackpadMap;
+			sourceTree = "<group>";
+		};
+		40000000000000000000001D /* CustomGestures */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000052 /* AdvancedGestureRecognizer.swift */,
+				200000000000000000000053 /* CustomGestureActionPerformer.swift */,
+				200000000000000000000055 /* CustomGestureRecordingSession.swift */,
+				200000000000000000000057 /* CustomGestureSettingsView.swift */,
+				200000000000000000000051 /* CustomGestureStore.swift */,
+				200000000000000000000056 /* KeyBindingRecorder.swift */,
+			);
+			path = CustomGestures;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -528,6 +557,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				100000000000000000000051 /* CustomGestureStore.swift in Sources */,
+				100000000000000000000052 /* AdvancedGestureRecognizer.swift in Sources */,
+				100000000000000000000053 /* CustomGestureActionPerformer.swift in Sources */,
+				100000000000000000000054 /* CustomGestureListener.swift in Sources */,
+				100000000000000000000055 /* CustomGestureRecordingSession.swift in Sources */,
+				100000000000000000000056 /* KeyBindingRecorder.swift in Sources */,
+				100000000000000000000057 /* CustomGestureSettingsView.swift in Sources */,
 				100000000000000000000001 /* main.swift in Sources */,
 				100000000000000000000033 /* AppBackgroundWorkers.swift in Sources */,
 				100000000000000000000002 /* AppDelegate.swift in Sources */,

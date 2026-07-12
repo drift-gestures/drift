@@ -305,10 +305,10 @@ static int contactFrameCallback(int device, void *data, int fingerCount, double 
     }
 
     TXMTFinger *fingers = (TXMTFinger *)data;
-
-    if (tracking && !contactListMatchesTracked(fingers, fingerCount)) {
-        finishContactSequence(timestamp, frame);
-    }
+    // A finger being added, removed, or reassigned is still part of the same physical gesture.
+    // Only a frame with no contacts ends the sequence. Treat identity changes as changed frames
+    // and reset pair-relative baselines so multi-finger gestures reach Swift as one recording.
+    bool contactSetChanged = tracking && !contactListMatchesTracked(fingers, fingerCount);
 
     copyContacts(fingers, fingerCount);
 
@@ -329,7 +329,7 @@ static int contactFrameCallback(int device, void *data, int fingerCount, double 
     }
 
     TXMTTouchPhase phase = tracking ? TXMTTouchPhaseChanged : TXMTTouchPhaseBegan;
-    if (!tracking || trackingFingerCount != fingerCount) {
+    if (!tracking || contactSetChanged || trackingFingerCount != fingerCount) {
         startDistance = currentDistance;
         startAngle = currentAngle;
         lastScale = 1.0;

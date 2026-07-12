@@ -11,6 +11,10 @@ final class SwiftBridge: @unchecked Sendable {
     private let snapshotReceiver: @MainActor (TrackpadSnapshot) -> Void
     /// Predicate that determines whether global keyboard input should be forwarded to listeners.
     private let shouldReceiveKeyboardInteraction: (KeyboardPressInteraction) -> Bool
+    /// Shared activation-key state used to gate basic and advanced gesture listeners.
+    private let customGestureModeState: CustomGestureModeState?
+    /// Main-actor receiver that presents runtime advanced-gesture listening state.
+    private let advancedGestureModeReceiver: @MainActor (Bool) -> Void
     /// Bridge that loads and streams private multitouch snapshots.
     private let cBridge = CTrackpadBridge()
     /// Ordered listener pipeline used to classify interactions.
@@ -32,13 +36,20 @@ final class SwiftBridge: @unchecked Sendable {
     init(
         activityLog: ActivityLogStore,
         listeners: [any Listener],
+        customGestureModeState: CustomGestureModeState? = nil,
+        advancedGestureModeReceiver: @escaping @MainActor (Bool) -> Void = { _ in },
         eventReceiver: @escaping @MainActor (BackendEvent) -> Void,
         snapshotReceiver: @escaping @MainActor (TrackpadSnapshot) -> Void,
         shouldReceiveKeyboardInteraction: @escaping (KeyboardPressInteraction) -> Bool = { _ in false }
     ) {
         self.activityLog = activityLog
-        self.listeners = ListenerPipeline(listeners: listeners)
+        self.listeners = ListenerPipeline(
+            listeners: listeners,
+            isAdvancedGestureModeActive: { customGestureModeState?.isAdvancedModeActive ?? false }
+        )
         self.listenerCount = listeners.count
+        self.customGestureModeState = customGestureModeState
+        self.advancedGestureModeReceiver = advancedGestureModeReceiver
         self.eventReceiver = eventReceiver
         self.snapshotReceiver = snapshotReceiver
         self.shouldReceiveKeyboardInteraction = shouldReceiveKeyboardInteraction
@@ -51,7 +62,15 @@ final class SwiftBridge: @unchecked Sendable {
             keyboardInteractionReceiver: { [weak self] keyPress in
                 self?.receive(.keyboardPress(keyPress)).suppressions ?? []
             },
-            shouldReceiveKeyboardInteraction: shouldReceiveKeyboardInteraction
+            shouldReceiveKeyboardInteraction: shouldReceiveKeyboardInteraction,
+            modifierStateReceiver: { [weak self] modifierState in
+                self?.customGestureModeState?.update(modifiers: modifierState.modifiers)
+                let isActive = self?.customGestureModeState?.isAdvancedModeActive ?? false
+                Task { @MainActor [weak self] in
+                    self?.advancedGestureModeReceiver(isActive)
+                }
+                _ = self?.receive(.modifierStateChanged(modifierState))
+            }
         )
         let suppressionStatus = suppressionAvailable
             ? "Foreground-event suppression is available."
@@ -138,6 +157,11 @@ final class SwiftBridge: @unchecked Sendable {
             let characters = keyPress.characters ?? "unprintable"
             activityLog.record(
                 "Key press \(characters) (\(keyPress.keyCode)).",
+                category: .input
+            )
+        case .modifierStateChanged(let modifierState):
+            activityLog.record(
+                "Modifier state changed (\(modifierState.modifiers.count) active).",
                 category: .input
             )
         case .clickOutside(let click):
