@@ -518,9 +518,10 @@ private struct AdvancedGestureListeningOverlay: View {
                 .font(.title)
                 .foregroundStyle(.white)
                 .padding()
-                .background(Color.black.opacity(0.34), in: Capsule())
+                .background(Color.black, in: Capsule())
             Spacer()
         }
+        .padding(.top, 50)
         .safeAreaPadding(.top)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
