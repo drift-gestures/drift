@@ -36,10 +36,51 @@ struct TrackpadMapView: View {
                 drawScrollRails(in: &context, surface: surface, size: size)
                 drawTrails(in: &context, surface: surface, now: timeline.date)
                 drawSnapshotCenter(in: &context, surface: surface)
+                drawImpactFlashes(in: &context, surface: surface, now: timeline.date)
             }
         }
         .accessibilityLabel("Live virtual trackpad")
         .accessibilityValue("\(store.snapshot?.fingerCount ?? 0) active contacts")
+    }
+
+    /// Draws fading edge flashes for recently detected chassis taps/slaps.
+    ///
+    /// Region classification is an approximate heuristic (see `ImpactRegion`), so flashes are drawn
+    /// as soft glows along the nearest matching edge rather than a precise point.
+    private func drawImpactFlashes(in context: inout GraphicsContext, surface: CGRect, now: Date) {
+        for flash in store.impactFlashes {
+            let opacity = impactOpacity(for: flash, at: now)
+            guard opacity > 0 else { continue }
+
+            let color: Color = flash.intensity == .slap ? .red : .yellow
+            let glowRect = edgeRect(for: flash.region, in: surface)
+            context.fill(
+                Path(roundedRect: glowRect, cornerRadius: 6),
+                with: .color(color.opacity(0.7 * opacity))
+            )
+        }
+    }
+
+    /// Fraction of a flash's fade window remaining, from `1` (just detected) to `0` (fully faded).
+    private func impactOpacity(for flash: TrackpadMapStore.ImpactFlash, at date: Date) -> Double {
+        max(0, min(1, 1 - date.timeIntervalSince(flash.recordedAt) / TrackpadMapStore.impactFadeDuration))
+    }
+
+    /// Maps an approximate chassis region to the map edge used to draw its flash.
+    private func edgeRect(for region: ImpactRegion, in surface: CGRect) -> CGRect {
+        let thickness: CGFloat = 10
+        switch region {
+        case .left:
+            return CGRect(x: surface.minX, y: surface.minY, width: thickness, height: surface.height)
+        case .right:
+            return CGRect(x: surface.maxX - thickness, y: surface.minY, width: thickness, height: surface.height)
+        case .frontPalmRest:
+            return CGRect(x: surface.minX, y: surface.maxY - thickness, width: surface.width, height: thickness)
+        case .deck:
+            return CGRect(x: surface.minX, y: surface.minY, width: surface.width, height: thickness)
+        case .unknown:
+            return surface.insetBy(dx: surface.width * 0.42, dy: surface.height * 0.42)
+        }
     }
 
     private func drawTrails(in context: inout GraphicsContext, surface: CGRect, now: Date) {

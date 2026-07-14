@@ -66,6 +66,17 @@
 		100000000000000000000055 /* CustomGestureRecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000055 /* CustomGestureRecordingSession.swift */; };
 		100000000000000000000056 /* KeyBindingRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000056 /* KeyBindingRecorder.swift */; };
 		100000000000000000000057 /* CustomGestureSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000057 /* CustomGestureSettingsView.swift */; };
+		100000000000000000000058 /* AccelerometerSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000058 /* AccelerometerSample.swift */; };
+		100000000000000000000059 /* ImpactModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000059 /* ImpactModels.swift */; };
+		10000000000000000000005A /* AccelerometerBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000005A /* AccelerometerBridge.swift */; };
+		10000000000000000000005B /* ImpactDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000005B /* ImpactDetector.swift */; };
+		10000000000000000000005C /* ImpactLogListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000005C /* ImpactLogListener.swift */; };
+		10000000000000000000005D /* ChassisMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000005D /* ChassisMapStore.swift */; };
+		10000000000000000000005E /* ChassisMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000005E /* ChassisMapView.swift */; };
+		100000000000000000000060 /* ChassisCalibrationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000060 /* ChassisCalibrationStore.swift */; };
+		100000000000000000000061 /* TapActionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000061 /* TapActionModels.swift */; };
+		100000000000000000000062 /* TapActionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000062 /* TapActionStore.swift */; };
+		100000000000000000000063 /* TapActionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000063 /* TapActionCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -132,6 +143,17 @@
 		200000000000000000000055 /* CustomGestureRecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomGestureRecordingSession.swift; sourceTree = "<group>"; };
 		200000000000000000000056 /* KeyBindingRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBindingRecorder.swift; sourceTree = "<group>"; };
 		200000000000000000000057 /* CustomGestureSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomGestureSettingsView.swift; sourceTree = "<group>"; };
+		200000000000000000000058 /* AccelerometerSample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccelerometerSample.swift; sourceTree = "<group>"; };
+		200000000000000000000059 /* ImpactModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImpactModels.swift; sourceTree = "<group>"; };
+		20000000000000000000005A /* AccelerometerBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccelerometerBridge.swift; sourceTree = "<group>"; };
+		20000000000000000000005B /* ImpactDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImpactDetector.swift; sourceTree = "<group>"; };
+		20000000000000000000005C /* ImpactLogListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImpactLogListener.swift; sourceTree = "<group>"; };
+		20000000000000000000005D /* ChassisMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChassisMapStore.swift; sourceTree = "<group>"; };
+		20000000000000000000005E /* ChassisMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChassisMapView.swift; sourceTree = "<group>"; };
+		200000000000000000000060 /* ChassisCalibrationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChassisCalibrationStore.swift; sourceTree = "<group>"; };
+		200000000000000000000061 /* TapActionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapActionModels.swift; sourceTree = "<group>"; };
+		200000000000000000000062 /* TapActionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapActionStore.swift; sourceTree = "<group>"; };
+		200000000000000000000063 /* TapActionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapActionCoordinator.swift; sourceTree = "<group>"; };
 		AE84834E2FE19DCA00446B38 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -252,6 +274,9 @@
 				200000000000000000000023 /* ListenerModels.swift */,
 				200000000000000000000024 /* BackendEvent.swift */,
 				200000000000000000000025 /* HUDModels.swift */,
+				200000000000000000000058 /* AccelerometerSample.swift */,
+				200000000000000000000059 /* ImpactModels.swift */,
+				200000000000000000000061 /* TapActionModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -274,6 +299,8 @@
 		40000000000000000000000C /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				40000000000000000000005F /* ChassisMap */,
+				400000000000000000000064 /* TapActions */,
 				40000000000000000000001D /* CustomGestures */,
 				400000000000000000000018 /* Excalidraw */,
 				400000000000000000000015 /* HUD */,
@@ -337,6 +364,8 @@
 				200000000000000000000026 /* ListenerPipeline.swift */,
 				200000000000000000000017 /* EventSuppressionController.swift */,
 				200000000000000000000019 /* CTrackpadBridge.swift */,
+				20000000000000000000005A /* AccelerometerBridge.swift */,
+				20000000000000000000005B /* ImpactDetector.swift */,
 				400000000000000000000016 /* Listeners */,
 			);
 			path = Input;
@@ -369,6 +398,7 @@
 				200000000000000000000054 /* CustomGestureListener.swift */,
 				20000000000000000000003A /* ExcalidrawHUDInputListener.swift */,
 				20000000000000000000002A /* TimerHUDInputListener.swift */,
+				20000000000000000000005C /* ImpactLogListener.swift */,
 			);
 			path = Listeners;
 			sourceTree = "<group>";
@@ -439,6 +469,25 @@
 				200000000000000000000050 /* TrackpadMapView.swift */,
 			);
 			path = TrackpadMap;
+			sourceTree = "<group>";
+		};
+		40000000000000000000005F /* ChassisMap */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000005D /* ChassisMapStore.swift */,
+				20000000000000000000005E /* ChassisMapView.swift */,
+				200000000000000000000060 /* ChassisCalibrationStore.swift */,
+			);
+			path = ChassisMap;
+			sourceTree = "<group>";
+		};
+		400000000000000000000064 /* TapActions */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000062 /* TapActionStore.swift */,
+				200000000000000000000063 /* TapActionCoordinator.swift */,
+			);
+			path = TapActions;
 			sourceTree = "<group>";
 		};
 		40000000000000000000001D /* CustomGestures */ = {
@@ -615,6 +664,17 @@
 				100000000000000000000031 /* TimerBackgroundWorker.swift in Sources */,
 				100000000000000000000030 /* TimerMenuBarController.swift in Sources */,
 				100000000000000000000009 /* driftMultitouch.c in Sources */,
+				100000000000000000000058 /* AccelerometerSample.swift in Sources */,
+				100000000000000000000059 /* ImpactModels.swift in Sources */,
+				10000000000000000000005A /* AccelerometerBridge.swift in Sources */,
+				10000000000000000000005B /* ImpactDetector.swift in Sources */,
+				10000000000000000000005C /* ImpactLogListener.swift in Sources */,
+				10000000000000000000005D /* ChassisMapStore.swift in Sources */,
+				10000000000000000000005E /* ChassisMapView.swift in Sources */,
+				100000000000000000000060 /* ChassisCalibrationStore.swift in Sources */,
+				100000000000000000000061 /* TapActionModels.swift in Sources */,
+				100000000000000000000062 /* TapActionStore.swift in Sources */,
+				100000000000000000000063 /* TapActionCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

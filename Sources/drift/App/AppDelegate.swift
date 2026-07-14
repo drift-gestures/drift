@@ -20,6 +20,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let trackpadMapStore = TrackpadMapStore()
     /// Whether the virtual trackpad is currently visible and should process snapshots.
     private var isTrackpadMapEnabled = false
+    /// Standalone window that renders live chassis accelerometer motion and impacts.
+    private var chassisMapWindow: NSWindow?
+    /// State owned by the standalone chassis accelerometer map feature.
+    private let chassisMapStore = ChassisMapStore()
+    /// Learned chassis-location calibration and its guided calibration flow.
+    private let chassisCalibrationStore = ChassisCalibrationStore()
+    /// Device-local source of truth for tap/slap action bindings.
+    private let tapActionStore = TapActionStore()
+    /// Observable Settings adapter for tap/slap action bindings.
+    private lazy var tapActionSettingsModel = TapActionSettingsModel(store: tapActionStore)
+    /// Resolves impact bursts into single/double/triple actions and performs them.
+    private lazy var tapActionCoordinator = TapActionCoordinator(
+        store: tapActionStore,
+        onTrigger: { [weak self] binding, count in
+            self?.activityLog.record("Performed tap action \(binding.name) (\(count)×).", category: .action)
+        }
+    )
+    /// Whether the chassis map is currently visible and should process samples.
+    private var isChassisMapEnabled = false
     /// Menu item used to reflect and toggle Timer HUD visibility.
     private var timerHUDMenuItem: NSMenuItem?
     /// Menu item used to reflect and toggle Excalidraw HUD visibility.
@@ -100,7 +119,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 isEnabled: { [featureListenerState] in
                     featureListenerState.isEnabled(.excalidraw)
                 }
-            )
+            ),
+            ImpactLogListener()
         ],
         customGestureModeState: customGestureModeState,
         advancedGestureModeReceiver: { [weak self] isActive in
@@ -119,6 +139,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             if self.isTrackpadMapEnabled {
                 self.trackpadMapStore.update(with: snapshot)
             }
+        },
+        accelerometerSampleReceiver: { [weak self] sample in
+            guard let self, self.isChassisMapEnabled else { return }
+            self.chassisMapStore.update(with: sample)
         },
         shouldReceiveKeyboardInteraction: { [hudController] _ in
             hudController.isActive(TimerHUDDefinition.hudID) ||
@@ -142,6 +166,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         )
         if UserDefaults.standard.bool(forKey: AppPreferenceKey.virtualTrackpadEnabled) {
             setVirtualTrackpadEnabled(true)
+        }
+        if UserDefaults.standard.bool(forKey: AppPreferenceKey.chassisMapEnabled) {
+            setChassisMapEnabled(true)
         }
         if shouldOpenLiveLogAtLaunch {
             openLiveLog()
@@ -285,6 +312,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             case .execute: "execute"
             }
             activityLog.record("Excalidraw HUD received \(inputText).", category: .action)
+        case .impactDetected(let impact):
+            // Already logged as an `.input`-category entry by `ActivityLogStore.record(impact:)`.
+            if isTrackpadMapEnabled {
+                trackpadMapStore.record(impact: impact)
+            }
+            // During a guided calibration the taps train the classifier rather than trigger actions.
+            if chassisCalibrationStore.session != nil {
+                chassisCalibrationStore.collect(feature: impact.feature)
+                break
+            }
+
+            // Classify the hit's side once; it drives both the map snap and side-scoped actions.
+            let zone = chassisCalibrationStore.calibration?.classify(impact.feature)
+            let side: ImpactSide = zone.map { $0.center.x < 0.5 ? .left : .right } ?? .any
+            tapActionCoordinator.register(intensity: impact.intensity, side: side)
+
+            if isChassisMapEnabled {
+                chassisMapStore.setZoneCenters(chassisCalibrationStore.calibration?.zones.map(\.center) ?? [])
+                // When calibrated, snap the hit to its nearest zone center; otherwise fall back to
+                // the uncalibrated onset projection.
+                chassisMapStore.record(impact: impact, at: zone?.center ?? impact.coordinate)
+            }
         }
     }
 
@@ -323,6 +372,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 timerPreferences: timerWorker.timerPreferences,
                 pomodoroPreferences: timerWorker.pomodoroPreferences,
                 customGestures: customGestureSettingsModel,
+                chassisCalibration: chassisCalibrationStore,
+                tapActions: tapActionSettingsModel,
                 timerWorker: timerWorker,
                 setTimerListenerEnabled: { [featureListenerState] enabled in
                     featureListenerState.setEnabled(enabled, for: .timer)
@@ -335,6 +386,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 },
                 setVirtualTrackpadEnabled: { [weak self] enabled in
                     self?.setVirtualTrackpadEnabled(enabled)
+                },
+                setChassisMapEnabled: { [weak self] enabled in
+                    self?.setChassisMapEnabled(enabled)
                 }
             )
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
@@ -392,6 +446,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         ))
     }
 
+    /// Opens or closes the standalone chassis accelerometer map window.
+    private func setChassisMapEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: AppPreferenceKey.chassisMapEnabled)
+        isChassisMapEnabled = enabled
+        chassisMapStore.setEnabled(enabled)
+        chassisMapStore.setZoneCenters(enabled ? (chassisCalibrationStore.calibration?.zones.map(\.center) ?? []) : [])
+        if enabled {
+            if chassisMapWindow == nil {
+                let view = ChassisMapView(store: chassisMapStore)
+                let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+                window.setContentSize(NSSize(width: 240, height: 190))
+                window.styleMask = [.borderless]
+                window.isReleasedWhenClosed = false
+                window.isOpaque = false
+                window.backgroundColor = .clear
+                window.hasShadow = true
+                window.ignoresMouseEvents = true
+                window.level = .floating
+                window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+                window.alphaValue = 0.72
+                window.delegate = self
+                chassisMapWindow = window
+            }
+            positionChassisMapWindow()
+            chassisMapWindow?.orderFrontRegardless()
+        } else {
+            chassisMapWindow?.close()
+            chassisMapWindow = nil
+        }
+    }
+
+    /// Anchors the chassis map above the virtual trackpad's bottom-right corner slot.
+    private func positionChassisMapWindow() {
+        guard let window = chassisMapWindow, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        let visibleFrame = screen.visibleFrame
+        window.setFrameOrigin(NSPoint(
+            x: visibleFrame.maxX - window.frame.width - 16,
+            y: visibleFrame.minY + 16 + 150 + 12
+        ))
+    }
+
     /// Watches pointer movement without making the pass-through window interactive.
     private func startTrackpadMapPointerMonitoring() {
         guard trackpadMapPointerMonitor == nil, trackpadMapLocalPointerMonitor == nil else { return }
@@ -432,15 +527,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// Keeps the overlay anchored after display geometry or menu-bar placement changes.
     @objc private func screenParametersDidChange() {
         positionTrackpadMapWindow()
+        positionChassisMapWindow()
     }
 
-    /// Keeps the persisted setting synchronized when the user closes the map window directly.
+    /// Keeps the persisted setting synchronized when the user closes a map window directly.
     func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow, window === trackpadMapWindow else { return }
-        isTrackpadMapEnabled = false
-        trackpadMapStore.setEnabled(false)
-        stopTrackpadMapPointerMonitoring()
-        UserDefaults.standard.set(false, forKey: AppPreferenceKey.virtualTrackpadEnabled)
+        guard let window = notification.object as? NSWindow else { return }
+        if window === trackpadMapWindow {
+            isTrackpadMapEnabled = false
+            trackpadMapStore.setEnabled(false)
+            stopTrackpadMapPointerMonitoring()
+            UserDefaults.standard.set(false, forKey: AppPreferenceKey.virtualTrackpadEnabled)
+        } else if window === chassisMapWindow {
+            isChassisMapEnabled = false
+            chassisMapStore.setEnabled(false)
+            UserDefaults.standard.set(false, forKey: AppPreferenceKey.chassisMapEnabled)
+        }
     }
 
     /// Whether the live log should open automatically after launch.
