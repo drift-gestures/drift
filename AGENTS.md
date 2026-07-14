@@ -5,6 +5,7 @@
 - Follow the user's instructions strictly. Do not do anything against what the user said.
 - If a different approach seems better or a user instruction appears risky or conflicting, stop work and ask before proceeding.
 - Clarify before implementing when the request has a real ambiguity that affects the outcome.
+- Never choose between raising a deployment target and adding API-availability gating without explicit user approval. Treat supported-platform changes as a material product decision, even when one direction appears consistent with existing code.
 - Do not over-clarify obvious choices. When the intended file, workspace, or next step is clear from context, proceed.
 
 ## Change Ownership

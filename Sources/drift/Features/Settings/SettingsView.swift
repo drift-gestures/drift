@@ -258,7 +258,7 @@ private struct TimerSettingsPage: View {
         SettingsPageLayout(title: "Timer") {
             Section("Feature") {
                 Toggle("Enable Timer gesture", isOn: $isListenerEnabled)
-                    .onChange(of: isListenerEnabled) { _, enabled in
+                    .onChange(of: isListenerEnabled) { enabled in
                         setListenerEnabled(enabled)
                     }
             }
@@ -268,7 +268,7 @@ private struct TimerSettingsPage: View {
                     value: $defaultDuration,
                     in: TimerHUDDurationFormatter.minimumMinutes...TimerHUDDurationFormatter.maximumMinutes
                 )
-                .onChange(of: defaultDuration) { _, duration in
+                .onChange(of: defaultDuration) { duration in
                     preferences.saveDefaultDuration(duration)
                 }
             }
@@ -299,7 +299,7 @@ private struct PomodoroSettingsPage: View {
         SettingsPageLayout(title: "Pomodoro") {
             Section("Feature") {
                 Toggle("Enable Pomodoro gesture", isOn: $isListenerEnabled)
-                    .onChange(of: isListenerEnabled) { _, enabled in
+                    .onChange(of: isListenerEnabled) { enabled in
                         setListenerEnabled(enabled)
                     }
             }
@@ -318,7 +318,7 @@ private struct PomodoroSettingsPage: View {
                 }
             }
         }
-        .onChange(of: durations) { _, durations in
+        .onChange(of: durations) { durations in
             save(durations)
         }
     }
@@ -341,7 +341,7 @@ private struct ExcalidrawSettingsPage: View {
         SettingsPageLayout(title: "Excalidraw") {
             Section("Feature") {
                 Toggle("Enable Excalidraw gesture", isOn: $isListenerEnabled)
-                    .onChange(of: isListenerEnabled) { _, enabled in
+                    .onChange(of: isListenerEnabled) { enabled in
                         setListenerEnabled(enabled)
                     }
             }
@@ -354,7 +354,7 @@ private struct ExcalidrawSettingsPage: View {
                     Text("Create New").tag(ExcalidrawQuickSwipeAction.createNew)
                     Text("Open Last File").tag(ExcalidrawQuickSwipeAction.openLastFile)
                 }
-                .onChange(of: quickSwipeAction) { _, action in
+                .onChange(of: quickSwipeAction) { action in
                     saveQuickSwipeAction(action)
                 }
             }

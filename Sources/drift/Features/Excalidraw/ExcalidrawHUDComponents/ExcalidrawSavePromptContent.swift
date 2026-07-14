@@ -21,7 +21,8 @@ struct ExcalidrawSavePromptContent: View {
             .buttonStyle(.plain)
             .cornerRadius(.infinity)
             .background(ClickBlockingView())
-            .glassEffect(.regular, in: .rect(cornerRadius: .infinity))
+            .background(.ultraThickMaterial)
+            .cornerRadius(.infinity)
             
             Group {
                 SavePromptTextField(
@@ -38,7 +39,12 @@ struct ExcalidrawSavePromptContent: View {
             .frame(width: ExcalidrawHUDStyle.settingsSize.width)
             .foregroundStyle(.primary)
             .background(ClickBlockingView())
-            .glassEffect(.regular, in: .rect(cornerRadius: ExcalidrawHUDStyle.cornerRadius / 1.5))
+            .background(.ultraThickMaterial)
+            .cornerRadius(ExcalidrawHUDStyle.cornerRadius/1.5)
+            .overlay(
+                RoundedRectangle(cornerRadius: ExcalidrawHUDStyle.cornerRadius/1.5)
+                        .stroke(.white.opacity(0.15), lineWidth: 1)
+            )
 
             Button {
                 save()
@@ -51,7 +57,8 @@ struct ExcalidrawSavePromptContent: View {
             .buttonStyle(.plain)
             .cornerRadius(.infinity)
             .background(ClickBlockingView())
-            .glassEffect(.regular, in: .rect(cornerRadius: .infinity))
+            .background(.ultraThickMaterial)
+            .cornerRadius(.infinity)
         }
     }
 }

@@ -522,6 +522,16 @@ private struct AdvancedGestureListeningOverlay: View {
     let dismiss: () -> Void
 
     var body: some View {
+        overlayContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: dismiss)
+            .ignoresSafeArea()
+            .accessibilityLabel("Advanced gestures are being listened to. Click to stop listening.")
+    }
+
+    @ViewBuilder
+    private var overlayContent: some View {
         VStack {
             Label("Listening for advanced gestures", systemImage: "hand.draw")
                 .font(.title2)
@@ -531,12 +541,18 @@ private struct AdvancedGestureListeningOverlay: View {
             Spacer()
         }
         .padding(.top, 50)
-        .safeAreaPadding(.top)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: dismiss)
-        .ignoresSafeArea()
-        .accessibilityLabel("Advanced gestures are being listened to. Click to stop listening.")
+        .modifier(AdvancedGestureListeningSafeAreaPadding())
+    }
+}
+
+private struct AdvancedGestureListeningSafeAreaPadding: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content.safeAreaPadding(.top)
+        } else {
+            content
+        }
     }
 }
 

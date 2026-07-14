@@ -328,7 +328,7 @@ private struct AdvancedGestureEditor: View {
             }
         }
         .frame(minWidth: 680, minHeight: 440)
-        .onChange(of: gesture.isPositionallyAware) { _, _ in
+        .onChange(of: gesture.isPositionallyAware) { _ in
             gesture.recordings.removeAll()
         }
         .sheet(isPresented: $showsRecorder) {

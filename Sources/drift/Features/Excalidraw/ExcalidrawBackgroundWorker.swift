@@ -72,15 +72,6 @@ final class ExcalidrawBackgroundWorker: ObservableObject, HUDBackgroundWorker {
     }
 
     private static func webHostRootURL() -> URL? {
-        #if SWIFT_PACKAGE
-        if let packageResourceURL = Bundle.module.url(
-            forResource: "ExcalidrawHost",
-            withExtension: nil
-        ) {
-            return packageResourceURL
-        }
-        #endif
-
         guard let appResourceURL = Bundle.main.resourceURL else { return nil }
         let appHostURL = appResourceURL.appendingPathComponent("ExcalidrawHost", isDirectory: true)
         var isDirectory: ObjCBool = false

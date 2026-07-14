@@ -18,7 +18,7 @@ struct ExcalidrawLauncherContent: View {
                     )
                     if (index == 1 && index != launcherItems.count - 1) {
                         Rectangle()
-                            .background(.white.opacity(0.1))
+                            .opacity(0.15)
                             .cornerRadius(.infinity)
                             .frame(width: 1)
                             .frame(maxHeight: .infinity)
@@ -31,8 +31,12 @@ struct ExcalidrawLauncherContent: View {
         }
         .padding([.vertical, .horizontal], ExcalidrawHUDStyle.padding)
         .frame(maxHeight: ExcalidrawHUDStyle.launcherSize.height)
+        .background(.ultraThickMaterial)
         .cornerRadius(ExcalidrawHUDStyle.cornerRadius)
-        .glassEffect(.regular ,in: .rect(cornerRadius: ExcalidrawHUDStyle.cornerRadius))
+        .overlay(
+                RoundedRectangle(cornerRadius: ExcalidrawHUDStyle.cornerRadius)
+                    .stroke(.white.opacity(0.15), lineWidth: 1)
+        )
         .frame(maxWidth: ExcalidrawHUDStyle.launcherSize.width, maxHeight: ExcalidrawHUDStyle.launcherSize.height)
     }
 }
@@ -66,7 +70,7 @@ struct LauncherItemView: View {
         VStack(spacing: 8) {
             ZStack {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(isSelected ? Color.white.opacity(0.1) : Color.clear)
+                    .fill(isSelected ? Color.white.opacity(0.15) : Color.clear)
                 if let record = item.record {
                     ThumbnailView(record: record)
                 } else if let systemImage = item.systemImage {

@@ -74,16 +74,23 @@ final class ExcalidrawDocumentStoreTests: XCTestCase {
     func testMoveToTrashUsesTrashOperationAndRefreshesDocuments() throws {
         let fixture = try StoreFixture()
         var trashedURL: URL?
+        var trashedFileNumber: NSNumber?
         let store = fixture.makeStore { fileURL in
             trashedURL = fileURL
+            trashedFileNumber = try FileManager.default
+                .attributesOfItem(atPath: fileURL.path)[.systemFileNumber] as? NSNumber
             try FileManager.default.removeItem(at: fileURL)
         }
         store.start()
         let record = try store.createNewDrawing()
 
+        let expectedFileNumber = try FileManager.default
+            .attributesOfItem(atPath: record.fileURL.path)[.systemFileNumber] as? NSNumber
+
         try store.moveToTrash(record)
 
-        XCTAssertEqual(trashedURL, record.fileURL)
+        XCTAssertNotNil(trashedURL)
+        XCTAssertEqual(trashedFileNumber, expectedFileNumber)
         XCTAssertNil(store.document(id: record.id))
     }
 }
