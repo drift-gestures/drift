@@ -33,8 +33,12 @@ struct ExcalidrawEditorContent: View {
             }
             .padding([.vertical, .horizontal], ExcalidrawHUDStyle.padding)
             .frame(width: size.width, height: size.height)
+            .background(.ultraThickMaterial)
             .cornerRadius(ExcalidrawHUDStyle.cornerRadius)
-            .glassEffect(.regular, in: .rect(cornerRadius: ExcalidrawHUDStyle.cornerRadius))
+            .overlay(
+                    RoundedRectangle(cornerRadius: ExcalidrawHUDStyle.cornerRadius)
+                        .stroke(.white.opacity(0.15), lineWidth: 1)
+            )
             .foregroundStyle(.primary)
         }
     }

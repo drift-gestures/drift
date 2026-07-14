@@ -28,7 +28,7 @@ struct ExcalidrawSearchContent: View {
                     .frame(maxWidth: .infinity)
 
                 Rectangle()
-                    .opacity(0.5)
+                    .opacity(0.15)
                     .cornerRadius(.infinity)
                     .frame(height: 1)
                     .frame(maxWidth: .infinity)
@@ -64,7 +64,7 @@ struct ExcalidrawSearchContent: View {
                         }
                     }
                 }
-                .onChange(of: selectedDocumentID) { _, documentID in
+                .onChange(of: selectedDocumentID) { documentID in
                     guard let documentID else { return }
                     scrollProxy.scrollTo(documentID)
                 }
@@ -73,7 +73,7 @@ struct ExcalidrawSearchContent: View {
             .padding(.vertical, 12)
 
             Rectangle()
-                .fill(.white.opacity(0.1))
+                .fill(.white.opacity(0.15))
                 .frame(height: 1)
                 .frame(maxWidth: .infinity)
 
@@ -108,16 +108,20 @@ struct ExcalidrawSearchContent: View {
             .padding(.horizontal, ExcalidrawHUDStyle.padding)
             .padding(.bottom, 2)
             .frame(height: 42)
-            .background(.ultraThinMaterial)
+            .background(.ultraThickMaterial)
         }
         .frame(width: ExcalidrawHUDStyle.searchSize.width * 0.8, height: ExcalidrawHUDStyle.searchSize.height, alignment: .top)
+        .background(.ultraThickMaterial)
         .cornerRadius(ExcalidrawHUDStyle.cornerRadius/2)
-        .glassEffect(.regular, in: .rect(cornerRadius: ExcalidrawHUDStyle.cornerRadius/2))
+        .overlay(
+                RoundedRectangle(cornerRadius: ExcalidrawHUDStyle.cornerRadius/2)
+                    .stroke(.white.opacity(0.15), lineWidth: 1)
+        )
         .onAppear {
             syncSelection()
             searchFocusRequest += 1
         }
-        .onChange(of: searchQuery) { _, _ in
+        .onChange(of: searchQuery) { _ in
             syncSelection()
         }
     }
@@ -193,7 +197,7 @@ struct KeybindingUI: View {
                     .font(.system(size: 11))
                     .padding(7)
                     .frame(width: 14+11, height: 14+11)
-                    .background(.white.opacity(0.1))
+                    .background(.white.opacity(0.15))
                     .cornerRadius(7)
             }
         }

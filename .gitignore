@@ -4,10 +4,6 @@
 .AppleDouble
 .LSOverride
 
-# Swift Package Manager
-.build/
-.swiftpm/
-
 # Xcode build products and indexes
 build/
 DerivedData/

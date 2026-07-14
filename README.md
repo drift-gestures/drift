@@ -46,7 +46,7 @@ Open the native application project:
 open drift.xcodeproj
 ```
 
-In Xcode, select the `drift` scheme and `My Mac`, then press Play. Open the `.xcodeproj` directly, not `Package.swift` or `.swiftpm/xcode/package.xcworkspace`. The package workspace launches a bare executable and cannot provide the macOS app bundle required by the menu-bar app.
+In Xcode, select the `drift` scheme and `My Mac`, then press Play.
 
 ## Command-line build
 
@@ -54,6 +54,14 @@ The project can also be checked from the command line with the Xcode app target:
 
 ```sh
 xcodebuild -project drift.xcodeproj -scheme drift -configuration Debug build
+```
+
+## Automated tests
+
+Run the app's non-UI regression suite with Xcode:
+
+```sh
+xcodebuild -project drift.xcodeproj -scheme drift test
 ```
 
 To create a local `.app` bundle and zip from the Xcode app target:

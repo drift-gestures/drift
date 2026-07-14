@@ -27,8 +27,8 @@ final class ExcalidrawHUDInputListenerTests: XCTestCase {
             modeState: modeState
         )
 
-        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.92), timestamp: 0, frame: 1))
-        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.5, y: 0.70), timestamp: 0.08, frame: 2))
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.99), timestamp: 0, frame: 1))
+        let result = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.5, y: 0.65), timestamp: 0.08, frame: 2))
         await Task.yield()
 
         XCTAssertTrue(result.claimInteraction)
@@ -55,7 +55,7 @@ final class ExcalidrawHUDInputListenerTests: XCTestCase {
             modeState: modeState
         )
 
-        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.92), timestamp: 0, frame: 1))
+        _ = listener.onInteraction(snapshot(.began, center: CGPoint(x: 0.5, y: 0.99), timestamp: 0, frame: 1))
         let opened = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.5, y: 0.82), timestamp: 0.30, frame: 2))
         let moved = listener.onInteraction(snapshot(.changed, center: CGPoint(x: 0.57, y: 0.82), timestamp: 0.36, frame: 3))
         await Task.yield()

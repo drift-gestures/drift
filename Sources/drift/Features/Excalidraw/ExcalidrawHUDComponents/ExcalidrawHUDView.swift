@@ -24,17 +24,17 @@ struct ExcalidrawHUDView: View {
     @State private var savePromptFocusRequest = 0
 
     var body: some View {
-        GlassEffectContainer {
+        //GlassEffectContainer {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onAppear(perform: onAppear)
                 .onDisappear(perform: onDisappear)
-                .onChange(of: mode) { _, _ in
+                .onChange(of: mode) { _ in
                     applyModeLayout()
                     worker.modeState.setMode(mode)
                 }
                 .onReceive(hudMessages.messages, perform: receiveHUDMessage)
-        }
+        //}
     }
 
     @ViewBuilder

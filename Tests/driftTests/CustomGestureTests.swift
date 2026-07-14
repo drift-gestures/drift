@@ -369,7 +369,15 @@ final class CustomGestureTests: XCTestCase {
         )
 
         XCTAssertEqual(events.map { $0.getIntegerValueField(.keyboardEventKeycode) }, [59, 48, 48, 59])
-        XCTAssertEqual(events.map { $0.type }, [.keyDown, .keyDown, .keyUp, .keyUp])
+        XCTAssertEqual(
+            events.map { $0.type.rawValue },
+            [
+                CGEventType.flagsChanged.rawValue,
+                CGEventType.keyDown.rawValue,
+                CGEventType.keyUp.rawValue,
+                CGEventType.flagsChanged.rawValue,
+            ]
+        )
         XCTAssertTrue(events[0].flags.contains(.maskControl))
         XCTAssertTrue(events[2].flags.contains(.maskControl))
         XCTAssertFalse(events[3].flags.contains(.maskControl))

@@ -1,7 +1,4 @@
 import Foundation
-#if SWIFT_PACKAGE
-import driftMultitouch
-#endif
 
 /// Copies the C-produced `TXMTTrackpadSnapshot` into Swift-owned values.
 final class CTrackpadBridge {
