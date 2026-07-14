@@ -496,7 +496,7 @@ private struct GestureTrackpadPreview: View {
     }
 }
 
-private enum GestureActionType: String, CaseIterable, Identifiable {
+enum GestureActionType: String, CaseIterable, Identifiable {
     case shortcut = "Keyboard Shortcut"
     case application = "Open Application"
     case url = "Open URL"
@@ -504,7 +504,7 @@ private enum GestureActionType: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
-private struct GestureActionEditor: View {
+struct GestureActionEditor: View {
     @Binding var action: CustomGestureAction
 
     var body: some View {
@@ -667,7 +667,7 @@ private extension BasicGestureKind {
     }
 }
 
-private extension CustomGestureAction {
+extension CustomGestureAction {
     var isConfigured: Bool {
         switch self {
         case .keyboardShortcut:
@@ -696,7 +696,7 @@ private extension CustomGestureAction {
     }
 }
 
-private enum GestureActionDefaults {
+enum GestureActionDefaults {
     static let unselectedScriptURL = URL(fileURLWithPath: "/__drift_unselected_script__")
 }
 

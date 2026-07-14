@@ -9,6 +9,10 @@ final class SwiftBridge: @unchecked Sendable {
     private let eventReceiver: @MainActor (BackendEvent) -> Void
     /// Main-actor receiver for snapshots that should update HUD layout state.
     private let snapshotReceiver: @MainActor (TrackpadSnapshot) -> Void
+    /// Main-actor receiver for throttled raw accelerometer samples used by live visualizations.
+    private let accelerometerSampleReceiver: @MainActor (AccelerometerSample) -> Void
+    /// Timestamp of the last forwarded accelerometer sample, used to throttle UI updates.
+    private var lastForwardedSampleTime = Date.distantPast
     /// Predicate that determines whether global keyboard input should be forwarded to listeners.
     private let shouldReceiveKeyboardInteraction: (KeyboardPressInteraction) -> Bool
     /// Shared activation-key state used to gate basic and advanced gesture listeners.
@@ -17,6 +21,10 @@ final class SwiftBridge: @unchecked Sendable {
     private let advancedGestureModeReceiver: @MainActor (Bool) -> Void
     /// Bridge that loads and streams private multitouch snapshots.
     private let cBridge = CTrackpadBridge()
+    /// Bridge that streams raw chassis accelerometer samples.
+    private let accelerometerBridge = AccelerometerBridge()
+    /// Reduces raw accelerometer samples into classified tap/slap events.
+    private let impactDetector = ImpactDetector()
     /// Ordered listener pipeline used to classify interactions.
     private let listeners: ListenerPipeline
     /// Number of listeners registered at startup, used only for status text.
@@ -40,6 +48,7 @@ final class SwiftBridge: @unchecked Sendable {
         advancedGestureModeReceiver: @escaping @MainActor (Bool) -> Void = { _ in },
         eventReceiver: @escaping @MainActor (BackendEvent) -> Void,
         snapshotReceiver: @escaping @MainActor (TrackpadSnapshot) -> Void,
+        accelerometerSampleReceiver: @escaping @MainActor (AccelerometerSample) -> Void = { _ in },
         shouldReceiveKeyboardInteraction: @escaping (KeyboardPressInteraction) -> Bool = { _ in false }
     ) {
         self.activityLog = activityLog
@@ -52,6 +61,7 @@ final class SwiftBridge: @unchecked Sendable {
         self.advancedGestureModeReceiver = advancedGestureModeReceiver
         self.eventReceiver = eventReceiver
         self.snapshotReceiver = snapshotReceiver
+        self.accelerometerSampleReceiver = accelerometerSampleReceiver
         self.shouldReceiveKeyboardInteraction = shouldReceiveKeyboardInteraction
     }
 
@@ -79,15 +89,18 @@ final class SwiftBridge: @unchecked Sendable {
             ? "No gesture listeners are registered."
             : "\(listenerCount) gesture listener\(listenerCount == 1 ? "" : "s") registered."
 
+        _ = accelerometerBridge.start(sampleHandler: receiveAccelerometerSample(_:))
+        let accelerometerStatus = accelerometerBridge.statusMessage
+
         if cBridge.start(snapshotHandler: receive(_:)) {
             activityLog.setBackend(
                 .enhanced,
-                message: "\(cBridge.statusMessage). \(suppressionStatus) \(listenerStatus)"
+                message: "\(cBridge.statusMessage). \(accelerometerStatus). \(suppressionStatus) \(listenerStatus)"
             )
         } else {
             activityLog.setBackend(
                 .inactive,
-                message: "\(cBridge.statusMessage). \(suppressionStatus)"
+                message: "\(cBridge.statusMessage). \(accelerometerStatus). \(suppressionStatus)"
             )
         }
     }
@@ -98,7 +111,23 @@ final class SwiftBridge: @unchecked Sendable {
         suppressionController.update([])
         processingLock.unlock()
         cBridge.stop()
+        accelerometerBridge.stop()
         suppressionController.stop()
+    }
+
+    /// Convenience receiver used as the accelerometer bridge's sample callback.
+    /// - Parameter sample: The raw sample received from the accelerometer bridge.
+    private func receiveAccelerometerSample(_ sample: AccelerometerSample) {
+        // Forward a throttled copy of the raw stream for live visualization before detection so the
+        // chassis map can render continuous motion, not just discrete impacts.
+        if sample.timestamp.timeIntervalSince(lastForwardedSampleTime) >= 1.0 / 60.0 {
+            lastForwardedSampleTime = sample.timestamp
+            Task { @MainActor in
+                accelerometerSampleReceiver(sample)
+            }
+        }
+        guard let impact = impactDetector.process(sample) else { return }
+        receive(.impactEvent(impact))
     }
 
     /// Processes one normalized interaction through listeners and applies the resulting effects.
@@ -153,6 +182,8 @@ final class SwiftBridge: @unchecked Sendable {
         case .trackpadSnapshot(let snapshot):
             activityLog.record(snapshot: snapshot)
             snapshotReceiver(snapshot)
+        case .impactEvent(let impact):
+            activityLog.record(impact: impact)
         case .keyboardPress(let keyPress):
             let characters = keyPress.characters ?? "unprintable"
             activityLog.record(

@@ -17,7 +17,17 @@ final class TrackpadMapStore: ObservableObject {
         var points: [TrailPoint]
     }
 
+    /// A chassis impact rendered as a fading flash along the map's matching edge.
+    struct ImpactFlash: Identifiable {
+        let id = UUID()
+        let region: ImpactRegion
+        let intensity: ImpactIntensity
+        let recordedAt: Date
+    }
+
     @Published private(set) var trails: [Int: Trail] = [:]
+    /// Recently detected chassis impacts still within their visual fade window.
+    @Published private(set) var impactFlashes: [ImpactFlash] = []
     /// Controls whether the map's scheduled drawing work should run.
     @Published private(set) var isEnabled = false
     /// The active frame used to render aggregate contact indicators.
@@ -29,6 +39,8 @@ final class TrackpadMapStore: ObservableObject {
 
     /// Time a released contact remains visible while its trail fades away.
     static let trailFadeDuration: TimeInterval = 0.5
+    /// Time a chassis impact flash remains visible while it fades away.
+    static let impactFadeDuration: TimeInterval = 0.6
 
     private var previousReportedRotation: Double?
     private var previousCenter: CGPoint?
@@ -39,11 +51,21 @@ final class TrackpadMapStore: ObservableObject {
         guard !enabled else { return }
 
         trails.removeAll()
+        impactFlashes.removeAll()
         snapshot = nil
         displayRotation = 0
         scrollPosition = .zero
         previousReportedRotation = nil
         previousCenter = nil
+    }
+
+    /// Records a detected chassis impact and prunes flashes that have finished fading.
+    /// - Parameter impact: The classified tap/slap event to visualize.
+    func record(impact: ImpactSnapshot) {
+        guard isEnabled else { return }
+        let now = Date()
+        impactFlashes.removeAll { now.timeIntervalSince($0.recordedAt) >= Self.impactFadeDuration }
+        impactFlashes.append(ImpactFlash(region: impact.region, intensity: impact.intensity, recordedAt: impact.timestamp))
     }
 
     /// Incorporates the latest hardware frame and removes contacts that have lifted.

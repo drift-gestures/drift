@@ -105,6 +105,22 @@ final class ActivityLogStore: ObservableObject {
         )
     }
 
+    /// Records a detected chassis impact from the accelerometer bridge.
+    /// - Parameter impact: The classified tap/slap event.
+    func record(impact: ImpactSnapshot) {
+        lastInputDescription = "Chassis \(impact.intensity.rawValue) (\(impact.region.rawValue))"
+        record(
+            String(
+                format: "Chassis %@ near %@: peak %.2fg, repeat %d.",
+                impact.intensity.rawValue,
+                impact.region.rawValue,
+                impact.peakMagnitude,
+                impact.repeatCount
+            ),
+            category: .input
+        )
+    }
+
     /// Records listener state changes and interaction-claim transitions.
     /// - Parameters:
     ///   - activities: Listener activity snapshots returned by the pipeline.

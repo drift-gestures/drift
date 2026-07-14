@@ -151,6 +151,8 @@ struct ClickOutsideInteraction: Sendable {
 enum Interaction: Sendable {
     /// A trackpad frame from the multitouch bridge.
     case trackpadSnapshot(TrackpadSnapshot)
+    /// A classified chassis tap/slap from the accelerometer bridge.
+    case impactEvent(ImpactSnapshot)
     /// A keyboard press from AppKit or the event tap.
     case keyboardPress(KeyboardPressInteraction)
     /// A modifier press or release, including otherwise keyless `flagsChanged` events.
@@ -169,6 +171,8 @@ enum Interaction: Sendable {
         switch self {
         case .trackpadSnapshot(let snapshot):
             snapshot.phase == .ended
+        case .impactEvent:
+            false
         case .clickOutside:
             true
         case .keyboardPress(let keyPress):

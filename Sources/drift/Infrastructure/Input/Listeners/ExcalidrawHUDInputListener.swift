@@ -48,7 +48,7 @@ struct ExcalidrawHUDInputListener: Listener {
             return onKeyboardPress(keyPress)
         case .trackpadSnapshot(let snapshot):
             return onTrackpadSnapshot(snapshot)
-        case .modifierStateChanged:
+        case .modifierStateChanged, .impactEvent:
             return ListenerDecision()
         }
     }

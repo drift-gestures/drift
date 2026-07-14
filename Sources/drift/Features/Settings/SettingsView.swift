@@ -4,6 +4,7 @@ import SwiftUI
 enum AppPreferenceKey {
     static let openLiveLogAtLaunch = "drift.openLiveLogAtLaunch"
     static let virtualTrackpadEnabled = "drift.virtualTrackpadEnabled"
+    static let chassisMapEnabled = "drift.chassisMapEnabled"
     static let timerListenerEnabled = "drift.timerListenerEnabled"
     static let pomodoroListenerEnabled = "drift.pomodoroListenerEnabled"
     static let excalidrawListenerEnabled = "drift.excalidrawListenerEnabled"
@@ -59,6 +60,8 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
     case excalidraw
     case customGestures
     case virtualTrackpad
+    case chassisMap
+    case tapActions
 
     var id: Self { self }
 
@@ -70,6 +73,8 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
         case .excalidraw: "Excalidraw"
         case .customGestures: "Custom Gestures"
         case .virtualTrackpad: "Virtual Trackpad"
+        case .chassisMap: "Chassis Map"
+        case .tapActions: "Tap Actions"
         }
     }
 
@@ -81,6 +86,8 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
         case .excalidraw: "pencil.and.scribble"
         case .customGestures: "hand.draw"
         case .virtualTrackpad: "rectangle.and.hand.point.up.left"
+        case .chassisMap: "laptopcomputer"
+        case .tapActions: "hand.tap"
         }
     }
 }
@@ -91,11 +98,14 @@ struct SettingsView: View {
     @ObservedObject var timerPreferences: TimerPreferencesStore
     @ObservedObject var pomodoroPreferences: PomodoroPreferencesStore
     @ObservedObject var customGestures: CustomGestureSettingsModel
+    @ObservedObject var chassisCalibration: ChassisCalibrationStore
+    @ObservedObject var tapActions: TapActionSettingsModel
     let timerWorker: TimerBackgroundWorker
     let setTimerListenerEnabled: (Bool) -> Void
     let setPomodoroListenerEnabled: (Bool) -> Void
     let setExcalidrawListenerEnabled: (Bool) -> Void
     let setVirtualTrackpadEnabled: (Bool) -> Void
+    let setChassisMapEnabled: (Bool) -> Void
 
     @State private var selectedPage: SettingsPage? = .general
 
@@ -111,6 +121,8 @@ struct SettingsView: View {
                     settingsLink(.excalidraw)
                     settingsLink(.customGestures)
                     settingsLink(.virtualTrackpad)
+                    settingsLink(.chassisMap)
+                    settingsLink(.tapActions)
                 }
             }
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 220)
@@ -140,6 +152,10 @@ struct SettingsView: View {
                 CustomGestureSettingsPage(model: customGestures)
             case .virtualTrackpad:
                 VirtualTrackpadSettingsPage(setEnabled: setVirtualTrackpadEnabled)
+            case .chassisMap:
+                ChassisMapSettingsPage(setEnabled: setChassisMapEnabled, calibration: chassisCalibration)
+            case .tapActions:
+                TapActionsSettingsPage(model: tapActions)
             }
         }
         .frame(minWidth: 680, minHeight: 440)
@@ -169,6 +185,126 @@ private struct VirtualTrackpadSettingsPage: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+private struct ChassisMapSettingsPage: View {
+    @AppStorage(AppPreferenceKey.chassisMapEnabled)
+    private var isEnabled = false
+    let setEnabled: (Bool) -> Void
+    @ObservedObject var calibration: ChassisCalibrationStore
+
+    var body: some View {
+        SettingsPageLayout(title: "Chassis Map") {
+            Section("Window") {
+                Toggle("Show chassis accelerometer map", isOn: $isEnabled)
+                    .onChange(of: isEnabled) { enabled in
+                        setEnabled(enabled)
+                    }
+            }
+            Section("Location calibration") {
+                if let target = calibration.currentTarget {
+                    calibrationInProgress(target)
+                } else {
+                    calibrationControls
+                }
+            }
+            Section {
+                Text("Shows a live crosshair of chassis motion with X/Y/Z g-values. A single accelerometer can't recover an exact tap position, so once calibrated each hit is snapped to the nearest calibrated zone rather than a precise point. Requires an Apple Silicon Mac with a built-in accelerometer.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func calibrationInProgress(_ target: ChassisCalibrationStore.Target) -> some View {
+        let index = ChassisCalibrationStore.targets.firstIndex { $0.id == target.id } ?? 0
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Tap the \(target.label.lowercased()) firmly")
+                .font(.headline)
+            Text("Target \(index + 1) of \(ChassisCalibrationStore.targets.count). Keep tapping the same spot — it advances automatically.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        Button("Cancel", role: .cancel) { calibration.cancelCalibration() }
+    }
+
+    @ViewBuilder
+    private var calibrationControls: some View {
+        LabeledContent("Status", value: calibration.isCalibrated ? "Calibrated" : "Not calibrated")
+        Button("Start calibration") { calibration.startCalibration() }
+        if calibration.isCalibrated {
+            Button("Reset calibration", role: .destructive) { calibration.resetCalibration() }
+        }
+    }
+}
+
+private struct TapActionsSettingsPage: View {
+    @ObservedObject var model: TapActionSettingsModel
+
+    var body: some View {
+        SettingsPageLayout(title: "Tap Actions") {
+            Section {
+                Text("Run an action when you tap or slap the chassis. Counts are single, double, or triple hits in quick succession. Side requires the Chassis Map to be calibrated.")
+                    .foregroundStyle(.secondary)
+            }
+            if model.bindings.isEmpty {
+                Section {
+                    Text("No tap actions yet.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            ForEach(model.bindings) { binding in
+                Section {
+                    TapActionEditor(
+                        binding: binding,
+                        save: model.save,
+                        delete: { model.delete(id: binding.id) }
+                    )
+                }
+            }
+            Section {
+                Button("Add Tap Action", systemImage: "plus") { model.addBinding() }
+            }
+        }
+    }
+}
+
+private struct TapActionEditor: View {
+    let binding: TapActionBinding
+    let save: (TapActionBinding) -> Void
+    let delete: () -> Void
+
+    @State private var draft: TapActionBinding
+
+    init(binding: TapActionBinding, save: @escaping (TapActionBinding) -> Void, delete: @escaping () -> Void) {
+        self.binding = binding
+        self.save = save
+        self.delete = delete
+        _draft = State(initialValue: binding)
+    }
+
+    var body: some View {
+        TextField("Name", text: Binding(get: { draft.name }, set: { draft.name = $0 }))
+        Picker("Count", selection: Binding(get: { draft.trigger.count }, set: { draft.trigger.count = $0 })) {
+            Text("Single").tag(1)
+            Text("Double").tag(2)
+            Text("Triple").tag(3)
+        }
+        Picker("Force", selection: Binding(get: { draft.trigger.intensity }, set: { draft.trigger.intensity = $0 })) {
+            ForEach(ImpactIntensityFilter.allCases) { Text($0.displayName).tag($0) }
+        }
+        Picker("Side", selection: Binding(get: { draft.trigger.side }, set: { draft.trigger.side = $0 })) {
+            ForEach(ImpactSide.allCases) { Text($0.displayName).tag($0) }
+        }
+        GestureActionEditor(action: Binding(get: { draft.action }, set: { draft.action = $0 }))
+        HStack {
+            Button("Delete", role: .destructive, action: delete)
+            Spacer()
+            Button("Save") { save(draft) }
+                .disabled(draft == binding)
+        }
+        .onChange(of: binding) { newValue in draft = newValue }
     }
 }
 

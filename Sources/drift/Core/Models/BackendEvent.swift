@@ -72,4 +72,6 @@ enum BackendEvent: Sendable {
     case excalidrawHUDDidClose(reason: ExcalidrawHUDCloseReason)
     /// A gesture-derived input was accepted for the active Excalidraw HUD.
     case excalidrawHUDDidReceiveInput(ExcalidrawHUDInput)
+    /// A classified chassis tap/slap was observed by the accelerometer bridge.
+    case impactDetected(ImpactSnapshot)
 }
