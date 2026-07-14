@@ -1,6 +1,16 @@
 import AppKit
 import SwiftUI
 
+/// Main-actor presentation model for foreground-event suppression availability.
+@MainActor
+final class EventSuppressionStatusModel: ObservableObject {
+    @Published private(set) var status: EventSuppressionStatus = .waitingForPermissions
+
+    func update(_ status: EventSuppressionStatus) {
+        self.status = status
+    }
+}
+
 enum AppPreferenceKey {
     static let openLiveLogAtLaunch = "drift.openLiveLogAtLaunch"
     static let virtualTrackpadEnabled = "drift.virtualTrackpadEnabled"
@@ -87,6 +97,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
 
 /// Menu-bar-only settings window with universal and feature-specific pages.
 struct SettingsView: View {
+    @ObservedObject var eventSuppressionStatus: EventSuppressionStatusModel
     @ObservedObject var documents: ExcalidrawDocumentStore
     @ObservedObject var timerPreferences: TimerPreferencesStore
     @ObservedObject var pomodoroPreferences: PomodoroPreferencesStore
@@ -96,6 +107,7 @@ struct SettingsView: View {
     let setPomodoroListenerEnabled: (Bool) -> Void
     let setExcalidrawListenerEnabled: (Bool) -> Void
     let setVirtualTrackpadEnabled: (Bool) -> Void
+    let retryEventSuppression: () -> Void
 
     @State private var selectedPage: SettingsPage? = .general
 
@@ -117,7 +129,10 @@ struct SettingsView: View {
         } detail: {
             switch selectedPage ?? .general {
             case .general:
-                GeneralSettingsPage()
+                GeneralSettingsPage(
+                    eventSuppressionStatus: eventSuppressionStatus,
+                    retryEventSuppression: retryEventSuppression
+                )
             case .timer:
                 TimerSettingsPage(
                     preferences: timerPreferences,
@@ -191,14 +206,37 @@ private struct SettingsPageLayout<Content: View>: View {
 }
 
 private struct GeneralSettingsPage: View {
+    @ObservedObject var eventSuppressionStatus: EventSuppressionStatusModel
+    let retryEventSuppression: () -> Void
     @AppStorage(AppPreferenceKey.openLiveLogAtLaunch)
     private var openLiveLogAtLaunch = true
 
     var body: some View {
         SettingsPageLayout(title: "General") {
+            Section("Input Suppression") {
+                LabeledContent("Status") {
+                    Text(statusTitle)
+                        .foregroundStyle(
+                            eventSuppressionStatus.status == .disabled
+                                ? Color.orange
+                                : Color.primary
+                        )
+                }
+                if eventSuppressionStatus.status == .disabled {
+                    Button("Retry", action: retryEventSuppression)
+                }
+            }
             Section("Application") {
                 Toggle("Open Live Log at launch", isOn: $openLiveLogAtLaunch)
             }
+        }
+    }
+
+    private var statusTitle: String {
+        switch eventSuppressionStatus.status {
+        case .waitingForPermissions: "Waiting for permissions"
+        case .available: "Available"
+        case .disabled: "Disabled"
         }
     }
 }

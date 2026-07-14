@@ -26,6 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var excalidrawHUDMenuItem: NSMenuItem?
     /// In-memory diagnostics store displayed by the live log.
     private let activityLog = ActivityLogStore()
+    /// Main-actor state displayed by Settings for foreground-event suppression recovery.
+    private let eventSuppressionStatus = EventSuppressionStatusModel()
     /// Device-local source of truth for all user-created gestures.
     private let customGestureStore = CustomGestureStore()
     /// Shared gate that makes the global advanced-gesture activation key exclusive.
@@ -108,6 +110,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             self.advancedGestureOverlayPresenter.setActive(
                 isActive && !self.customGestureCaptureState.isActive
             )
+        },
+        suppressionStatusReceiver: { [eventSuppressionStatus] status in
+            eventSuppressionStatus.update(status)
         },
         eventReceiver: { [weak self] event in
             self?.handleBackendEvent(event)
@@ -319,6 +324,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if settingsWindow == nil {
             let timerWorker = hudRegistry.timerWorker
             let view = SettingsView(
+                eventSuppressionStatus: eventSuppressionStatus,
                 documents: hudRegistry.excalidrawWorker.documents,
                 timerPreferences: timerWorker.timerPreferences,
                 pomodoroPreferences: timerWorker.pomodoroPreferences,
@@ -335,6 +341,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 },
                 setVirtualTrackpadEnabled: { [weak self] enabled in
                     self?.setVirtualTrackpadEnabled(enabled)
+                },
+                retryEventSuppression: { [weak self] in
+                    self?.swiftBridge.retryEventSuppression()
                 }
             )
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
