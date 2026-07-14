@@ -21,7 +21,7 @@ struct EventSuppressionLifecycle: Equatable, Sendable {
         status = .available
     }
 
-    mutating func observeMissingPermissions() {
+    mutating func didDetectMissingPermissions() {
         guard status == .available else { return }
         status = .disabled
     }
@@ -314,7 +314,7 @@ final class EventSuppressionController: @unchecked Sendable {
         let permissionState = permissionStateProvider()
         guard permissionState.allowsEventTap else {
             let status = updateLifecycle { lifecycle in
-                lifecycle.observeMissingPermissions()
+                lifecycle.didDetectMissingPermissions()
             }
             if status == .disabled {
                 disableSuppressionImmediately()
@@ -630,7 +630,7 @@ final class EventSuppressionController: @unchecked Sendable {
         guard currentStatus != .disabled else { return false }
         let permissionState = permissionStateProvider()
         guard permissionState.allowsEventTap else {
-            updateLifecycle { $0.observeMissingPermissions() }
+            updateLifecycle { $0.didDetectMissingPermissions() }
             disableSuppressionAfterEventTapCallback()
             return false
         }
