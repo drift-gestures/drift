@@ -2,6 +2,176 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
+/// User-visible availability of foreground-event suppression.
+enum EventSuppressionStatus: Equatable, Sendable {
+    case waitingForPermissions
+    case available
+    case disabled
+}
+
+/// Pure lifecycle policy for event-tap availability and automatic permission monitoring.
+struct EventSuppressionLifecycle: Equatable, Sendable {
+    private(set) var status: EventSuppressionStatus = .waitingForPermissions
+
+    var shouldPollPermissions: Bool {
+        status != .disabled
+    }
+
+    mutating func didInstallTap() {
+        status = .available
+    }
+
+    mutating func didDetectMissingPermissions() {
+        guard status == .available else { return }
+        status = .disabled
+    }
+
+    mutating func didReceiveTapDisabledNotification() {
+        status = .disabled
+    }
+
+    mutating func didCompleteManualRetry(installed: Bool) {
+        status = installed ? .available : .disabled
+    }
+
+    mutating func beginInitialPermissionSetup() {
+        status = .waitingForPermissions
+    }
+}
+
+/// One installed CoreGraphics event-tap session that can be discarded independently.
+protocol EventSuppressionTapSession: AnyObject {
+    func invalidate()
+}
+
+/// Scheduling boundary for automatic permission checks.
+protocol EventSuppressionPermissionTimer: AnyObject {
+    var isRunning: Bool { get }
+    func start(interval: TimeInterval, check: @escaping () -> Void)
+    func stop()
+}
+
+/// Bridges Foundation's sendable timer callback to the main-run-loop-owned check closure.
+private final class EventSuppressionPermissionCheck: @unchecked Sendable {
+    private let check: () -> Void
+
+    init(_ check: @escaping () -> Void) {
+        self.check = check
+    }
+
+    func perform() {
+        check()
+    }
+}
+
+/// Carries one detached tap session to its deferred main-queue invalidation.
+private final class DeferredEventSuppressionTapInvalidation: @unchecked Sendable {
+    private let session: any EventSuppressionTapSession
+
+    init(session: any EventSuppressionTapSession) {
+        self.session = session
+    }
+
+    func perform() {
+        session.invalidate()
+    }
+}
+
+/// Main-run-loop permission timer used by the production controller.
+private final class RunLoopEventSuppressionPermissionTimer: EventSuppressionPermissionTimer {
+    private var timer: Timer?
+
+    var isRunning: Bool {
+        timer != nil
+    }
+
+    func start(interval: TimeInterval, check: @escaping () -> Void) {
+        guard timer == nil else { return }
+        let permissionCheck = EventSuppressionPermissionCheck(check)
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in
+            permissionCheck.perform()
+        }
+        self.timer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+}
+
+/// Owns the CoreGraphics port and run-loop source for one tap installation.
+private final class CoreGraphicsEventSuppressionTapSession: EventSuppressionTapSession {
+    private var tap: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
+
+    private init?(
+        location: CGEventTapLocation,
+        listensForKeyboardEvents: Bool,
+        userInfo: UnsafeMutableRawPointer
+    ) {
+        var types: [CGEventType] = [
+            .scrollWheel,
+            .leftMouseDown, .leftMouseUp,
+            .rightMouseDown, .rightMouseUp,
+            .otherMouseDown, .otherMouseUp,
+        ]
+        if listensForKeyboardEvents {
+            types.append(contentsOf: [.keyDown, .keyUp, .flagsChanged])
+        }
+        let mask = types.reduce(CGEventMask(0)) { mask, type in
+            mask | (CGEventMask(1) << type.rawValue)
+        }
+
+        guard let tap = CGEvent.tapCreate(
+            tap: location,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: suppressionEventTapCallback,
+            userInfo: userInfo
+        ) else {
+            return nil
+        }
+        guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
+            CFMachPortInvalidate(tap)
+            return nil
+        }
+
+        self.tap = tap
+        runLoopSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    static func install(
+        listensForKeyboardEvents: Bool,
+        userInfo: UnsafeMutableRawPointer
+    ) -> (any EventSuppressionTapSession)? {
+        CoreGraphicsEventSuppressionTapSession(
+            location: .cghidEventTap,
+            listensForKeyboardEvents: listensForKeyboardEvents,
+            userInfo: userInfo
+        ) ?? CoreGraphicsEventSuppressionTapSession(
+            location: .cgSessionEventTap,
+            listensForKeyboardEvents: listensForKeyboardEvents,
+            userInfo: userInfo
+        )
+    }
+
+    func invalidate() {
+        if let runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        }
+        if let tap {
+            CFMachPortInvalidate(tap)
+        }
+        runLoopSource = nil
+        tap = nil
+    }
+}
+
 /// Permission snapshot required to install and use a CoreGraphics event tap.
 struct EventSuppressionPermissionState: Equatable, Sendable {
     /// Whether the app can listen to hardware input events.
@@ -22,12 +192,24 @@ final class EventSuppressionController: @unchecked Sendable {
 
     /// Protects mutable suppression state shared with the event-tap callback.
     private let lock = NSLock()
+    /// Protects lifecycle state read by input and main-run-loop callbacks.
+    private let lifecycleLock = NSLock()
     /// Supplies the current permission state, injectable for tests.
     private let permissionStateProvider: () -> EventSuppressionPermissionState
     /// Requests any missing permissions, injectable for tests.
     private let permissionRequester: (EventSuppressionPermissionState) -> Void
+    /// Publishes suppression availability to the application layer.
+    private let statusReceiver: @MainActor (EventSuppressionStatus) -> Void
+    /// Creates one fresh CoreGraphics tap session, injectable at the system boundary for tests.
+    private let tapSessionFactory: (Bool, UnsafeMutableRawPointer) -> (any EventSuppressionTapSession)?
+    /// Owns automatic permission-check scheduling, injectable at the system boundary for tests.
+    private let permissionTimer: any EventSuppressionPermissionTimer
     /// Interval used by the permission polling timer.
     private let permissionCheckInterval: TimeInterval
+    /// Safety policy for setup, active suppression, and manual recovery.
+    private var lifecycle = EventSuppressionLifecycle()
+    /// Prevents repeated `start()` calls from resetting a latched Disabled state.
+    private var hasStarted = false
     /// Active suppression requests from the listener pipeline.
     private var requests: Set<SuppressionRequest> = []
     /// Mouse-up event types that should be suppressed after their matching button-down was blocked.
@@ -42,12 +224,8 @@ final class EventSuppressionController: @unchecked Sendable {
     private var shouldReceiveKeyboardInteraction: ((KeyboardPressInteraction) -> Bool)?
     /// Whether the installed event tap should include keyboard event types.
     private var listensForKeyboardEvents = false
-    /// The active CoreGraphics event tap port.
-    private var eventTap: CFMachPort?
-    /// Run-loop source that keeps the event tap active.
-    private var runLoopSource: CFRunLoopSource?
-    /// Timer that periodically rechecks permissions after startup.
-    private var permissionCheckTimer: Timer?
+    /// The active tap session; detached sessions can be invalidated without touching a replacement.
+    private var tapSession: (any EventSuppressionTapSession)?
     /// Whether this controller has already prompted for missing permissions during this run.
     private var didRequestMissingPermissions = false
 
@@ -59,10 +237,21 @@ final class EventSuppressionController: @unchecked Sendable {
     init(
         permissionStateProvider: @escaping () -> EventSuppressionPermissionState = EventSuppressionController.currentPermissionState,
         permissionRequester: @escaping (EventSuppressionPermissionState) -> Void = EventSuppressionController.requestMissingPermissions,
+        statusReceiver: @escaping @MainActor (EventSuppressionStatus) -> Void = { _ in },
+        tapSessionFactory: ((Bool, UnsafeMutableRawPointer) -> (any EventSuppressionTapSession)?)? = nil,
+        permissionTimer: (any EventSuppressionPermissionTimer)? = nil,
         permissionCheckInterval: TimeInterval = EventSuppressionController.defaultPermissionCheckInterval
     ) {
         self.permissionStateProvider = permissionStateProvider
         self.permissionRequester = permissionRequester
+        self.statusReceiver = statusReceiver
+        self.tapSessionFactory = tapSessionFactory ?? { listensForKeyboardEvents, userInfo in
+            CoreGraphicsEventSuppressionTapSession.install(
+                listensForKeyboardEvents: listensForKeyboardEvents,
+                userInfo: userInfo
+            )
+        }
+        self.permissionTimer = permissionTimer ?? RunLoopEventSuppressionPermissionTimer()
         self.permissionCheckInterval = permissionCheckInterval
     }
 
@@ -79,6 +268,13 @@ final class EventSuppressionController: @unchecked Sendable {
         self.keyboardInteractionReceiver = keyboardInteractionReceiver
         self.shouldReceiveKeyboardInteraction = shouldReceiveKeyboardInteraction
         self.modifierStateReceiver = modifierStateReceiver
+        if !hasStarted {
+            hasStarted = true
+            if currentStatus != .disabled {
+                updateLifecycle { $0.beginInitialPermissionSetup() }
+            }
+        }
+        guard currentStatus != .disabled else { return false }
         requestMissingPermissionsOnce()
         startPermissionChecks()
         return refreshTapForCurrentPermissions()
@@ -88,7 +284,7 @@ final class EventSuppressionController: @unchecked Sendable {
     /// - Parameter requests: The suppression requests returned by the listener pipeline.
     func update(_ requests: Set<SuppressionRequest>) {
         lock.lock()
-        if eventTap == nil {
+        if currentStatus != .available || tapSession == nil {
             self.requests = []
             suppressedButtonUps = []
             suppressedKeyUps = []
@@ -107,32 +303,46 @@ final class EventSuppressionController: @unchecked Sendable {
         shouldReceiveKeyboardInteraction = nil
         listensForKeyboardEvents = false
         didRequestMissingPermissions = false
+        hasStarted = false
     }
 
     /// Installs an event tap if permissions now allow it, or tears down an invalid tap.
     /// - Returns: `true` when an event tap is available after the refresh.
     @discardableResult
     private func refreshTapForCurrentPermissions() -> Bool {
-        guard permissionStateProvider().allowsEventTap else {
-            terminateTap()
+        guard currentStatus != .disabled else { return false }
+        let permissionState = permissionStateProvider()
+        guard permissionState.allowsEventTap else {
+            let status = updateLifecycle { lifecycle in
+                lifecycle.didDetectMissingPermissions()
+            }
+            if status == .disabled {
+                disableSuppressionImmediately()
+            } else {
+                publishStatus(status)
+            }
             return false
         }
-        guard eventTap == nil else { return true }
+        guard tapSession == nil else {
+            let status = updateLifecycle { $0.didInstallTap() }
+            publishStatus(status)
+            return true
+        }
         listensForKeyboardEvents = keyboardInteractionReceiver != nil
-        return installTap(at: .cghidEventTap) || installTap(at: .cgSessionEventTap)
+        let installed = installTap()
+        if installed {
+            let status = updateLifecycle { $0.didInstallTap() }
+            publishStatus(status)
+        }
+        return installed
     }
 
     /// Removes the event tap and clears all pending suppression bookkeeping.
     private func terminateTap() {
         clearSuppressionState()
-        if let runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        }
-        if let eventTap {
-            CFMachPortInvalidate(eventTap)
-        }
-        runLoopSource = nil
-        eventTap = nil
+        let session = tapSession
+        tapSession = nil
+        session?.invalidate()
     }
 
     /// Prompts for missing permissions at most once during a controller run.
@@ -147,57 +357,58 @@ final class EventSuppressionController: @unchecked Sendable {
 
     /// Starts the timer that retries event-tap installation as permissions change.
     private func startPermissionChecks() {
-        guard permissionCheckTimer == nil else { return }
-        let timer = Timer(timeInterval: permissionCheckInterval, repeats: true) { [weak self] _ in
+        guard currentShouldPollPermissions, !permissionTimer.isRunning else { return }
+        permissionTimer.start(interval: permissionCheckInterval) { [weak self] in
             _ = self?.refreshTapForCurrentPermissions()
         }
-        permissionCheckTimer = timer
-        RunLoop.main.add(timer, forMode: .common)
     }
 
     /// Stops the permission polling timer.
     private func stopPermissionChecks() {
-        permissionCheckTimer?.invalidate()
-        permissionCheckTimer = nil
+        permissionTimer.stop()
     }
 
-    /// Attempts to install a CoreGraphics event tap at a specific tap location.
-    /// - Parameter location: The CoreGraphics event-tap location to try.
-    /// - Returns: `true` if the event tap and run-loop source were created.
-    private func installTap(at location: CGEventTapLocation) -> Bool {
-        var types: [CGEventType] = [
-            .scrollWheel,
-            .leftMouseDown, .leftMouseUp,
-            .rightMouseDown, .rightMouseUp,
-            .otherMouseDown, .otherMouseUp,
-        ]
-        if listensForKeyboardEvents {
-            types.append(contentsOf: [.keyDown, .keyUp, .flagsChanged])
-        }
-        let mask = types.reduce(CGEventMask(0)) { mask, type in
-            mask | (CGEventMask(1) << type.rawValue)
+    /// Attempts to install one fresh event-tap session.
+    /// - Returns: `true` when the session factory created and installed a tap.
+    private func installTap() -> Bool {
+        guard tapSession == nil else { return true }
+        tapSession = tapSessionFactory(
+            listensForKeyboardEvents,
+            Unmanaged.passUnretained(self).toOpaque()
+        )
+        return tapSession != nil
+    }
+
+    /// Makes one explicit attempt to create a fresh event tap after a safety disablement.
+    /// - Returns: `true` when a new tap was installed and permission monitoring resumed.
+    @discardableResult
+    func retrySuppression() -> Bool {
+        guard currentStatus == .disabled else {
+            return currentStatus == .available
         }
 
-        guard let tap = CGEvent.tapCreate(
-            tap: location,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
-            callback: suppressionEventTapCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else {
-            return false
-        }
-        guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
-            CFMachPortInvalidate(tap)
+        stopPermissionChecks()
+        terminateTap()
+
+        guard permissionStateProvider().allowsEventTap else {
+            let status = updateLifecycle { $0.didCompleteManualRetry(installed: false) }
+            publishStatus(status)
             return false
         }
 
-        eventTap = tap
-        runLoopSource = source
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-        return true
+        listensForKeyboardEvents = keyboardInteractionReceiver != nil
+        let installed = installTap()
+        let status = updateLifecycle { $0.didCompleteManualRetry(installed: installed) }
+        publishStatus(status)
+        if installed {
+            startPermissionChecks()
+        }
+        return installed
+    }
+
+    /// Current foreground-event suppression availability.
+    var status: EventSuppressionStatus {
+        currentStatus
     }
 
     /// Clears all active suppression requests and paired-up event tracking.
@@ -407,27 +618,79 @@ final class EventSuppressionController: @unchecked Sendable {
         }
     }
 
-    /// Re-enables the event tap after CoreGraphics disables it because processing took too long.
-    fileprivate func enableAfterTapDisabled() {
-        guard refreshTapForCurrentPermissions(), let eventTap else { return }
-        CGEvent.tapEnable(tap: eventTap, enable: true)
-    }
-
-    /// Handles user-input tap disablement by refreshing permissions and re-enabling the tap.
-    fileprivate func disableAfterUserInput() {
-        if refreshTapForCurrentPermissions() {
-            enableAfterTapDisabled()
-        }
+    /// Latches suppression off when CoreGraphics safety-disables the active tap.
+    func handleTapDisabledNotification() {
+        updateLifecycle { $0.didReceiveTapDisabledNotification() }
+        disableSuppressionAfterEventTapCallback()
     }
 
     /// Confirms permissions are still valid before handling a callback event.
     /// - Returns: `true` when event handling may continue.
     private func permissionsAllowEventHandling() -> Bool {
-        guard permissionStateProvider().allowsEventTap else {
-            terminateTap()
+        guard currentStatus != .disabled else { return false }
+        let permissionState = permissionStateProvider()
+        guard permissionState.allowsEventTap else {
+            updateLifecycle { $0.didDetectMissingPermissions() }
+            disableSuppressionAfterEventTapCallback()
             return false
         }
         return true
+    }
+
+    /// Tears down suppression immediately after a timer observes runtime revocation.
+    private func disableSuppressionImmediately() {
+        publishStatus(.disabled)
+        stopPermissionChecks()
+        terminateTap()
+    }
+
+    /// Defers tap invalidation until CoreGraphics has returned from the current callback.
+    private func disableSuppressionAfterEventTapCallback() {
+        publishStatus(.disabled)
+        stopPermissionChecks()
+        clearSuppressionState()
+        let disabledSession = tapSession
+        tapSession = nil
+        guard let disabledSession else { return }
+        let invalidation = DeferredEventSuppressionTapInvalidation(session: disabledSession)
+        DispatchQueue.main.async {
+            invalidation.perform()
+        }
+    }
+
+    /// Returns the lifecycle status under synchronization.
+    private var currentStatus: EventSuppressionStatus {
+        lifecycleLock.lock()
+        let status = lifecycle.status
+        lifecycleLock.unlock()
+        return status
+    }
+
+    /// Returns whether lifecycle policy currently permits automatic permission checks.
+    private var currentShouldPollPermissions: Bool {
+        lifecycleLock.lock()
+        let shouldPoll = lifecycle.shouldPollPermissions
+        lifecycleLock.unlock()
+        return shouldPoll
+    }
+
+    /// Mutates lifecycle policy and returns the resulting status.
+    @discardableResult
+    private func updateLifecycle(
+        _ update: (inout EventSuppressionLifecycle) -> Void
+    ) -> EventSuppressionStatus {
+        lifecycleLock.lock()
+        update(&lifecycle)
+        let status = lifecycle.status
+        lifecycleLock.unlock()
+        return status
+    }
+
+    /// Delivers a lifecycle status to the main-actor application layer.
+    private func publishStatus(_ status: EventSuppressionStatus) {
+        Task { @MainActor [statusReceiver] in
+            statusReceiver(status)
+        }
     }
 
     /// Reads current macOS permissions required for event suppression.
@@ -483,12 +746,8 @@ private extension CGEventFlags {
 private let suppressionEventTapCallback: CGEventTapCallBack = { _, type, event, userInfo in
     guard let userInfo else { return Unmanaged.passUnretained(event) }
     let controller = Unmanaged<EventSuppressionController>.fromOpaque(userInfo).takeUnretainedValue()
-    if type == .tapDisabledByTimeout {
-        controller.enableAfterTapDisabled()
-        return Unmanaged.passUnretained(event)
-    }
-    if type == .tapDisabledByUserInput {
-        controller.disableAfterUserInput()
+    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+        controller.handleTapDisabledNotification()
         return Unmanaged.passUnretained(event)
     }
     return controller.filter(type: type, event: event)

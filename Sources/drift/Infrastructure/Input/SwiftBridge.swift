@@ -22,7 +22,7 @@ final class SwiftBridge: @unchecked Sendable {
     /// Number of listeners registered at startup, used only for status text.
     private let listenerCount: Int
     /// Controller that applies listener suppression requests to foreground-app events.
-    private let suppressionController = EventSuppressionController()
+    private let suppressionController: EventSuppressionController
     /// Serializes listener processing and suppression updates across callback sources.
     private let processingLock = NSLock()
 
@@ -38,6 +38,7 @@ final class SwiftBridge: @unchecked Sendable {
         listeners: [any Listener],
         customGestureModeState: CustomGestureModeState? = nil,
         advancedGestureModeReceiver: @escaping @MainActor (Bool) -> Void = { _ in },
+        suppressionStatusReceiver: @escaping @MainActor (EventSuppressionStatus) -> Void = { _ in },
         eventReceiver: @escaping @MainActor (BackendEvent) -> Void,
         snapshotReceiver: @escaping @MainActor (TrackpadSnapshot) -> Void,
         shouldReceiveKeyboardInteraction: @escaping (KeyboardPressInteraction) -> Bool = { _ in false }
@@ -48,6 +49,9 @@ final class SwiftBridge: @unchecked Sendable {
             isAdvancedGestureModeActive: { customGestureModeState?.isAdvancedModeActive ?? false }
         )
         self.listenerCount = listeners.count
+        self.suppressionController = EventSuppressionController(
+            statusReceiver: suppressionStatusReceiver
+        )
         self.customGestureModeState = customGestureModeState
         self.advancedGestureModeReceiver = advancedGestureModeReceiver
         self.eventReceiver = eventReceiver
@@ -99,6 +103,18 @@ final class SwiftBridge: @unchecked Sendable {
         processingLock.unlock()
         cBridge.stop()
         suppressionController.stop()
+    }
+
+    /// Makes one user-requested attempt to install a fresh foreground-event suppression tap.
+    @MainActor
+    func retryEventSuppression() {
+        let isAvailable = suppressionController.retrySuppression()
+        activityLog.record(
+            isAvailable
+                ? "Foreground-event suppression retry succeeded."
+                : "Foreground-event suppression retry failed.",
+            category: .system
+        )
     }
 
     /// Processes one normalized interaction through listeners and applies the resulting effects.
