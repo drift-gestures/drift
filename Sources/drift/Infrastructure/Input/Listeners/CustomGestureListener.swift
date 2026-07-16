@@ -7,6 +7,7 @@ struct CustomGestureListener: Listener {
     private let store: CustomGestureStore
     private let modeState: CustomGestureModeState
     private let captureState: CustomGestureCaptureState
+    private let focusedApplicationBundleIdentifier: () -> String?
     private var snapshots: [TrackpadSnapshot] = []
     private var basicStartSnapshot: TrackpadSnapshot?
     private var basicCandidates: [BasicGesture] = []
@@ -14,11 +15,13 @@ struct CustomGestureListener: Listener {
     init(
         store: CustomGestureStore,
         modeState: CustomGestureModeState,
-        captureState: CustomGestureCaptureState = CustomGestureCaptureState()
+        captureState: CustomGestureCaptureState = CustomGestureCaptureState(),
+        focusedApplicationBundleIdentifier: @escaping () -> String? = { nil }
     ) {
         self.store = store
         self.modeState = modeState
         self.captureState = captureState
+        self.focusedApplicationBundleIdentifier = focusedApplicationBundleIdentifier
     }
 
     mutating func onInteraction(_ interaction: Interaction) -> ListenerDecision {
@@ -27,12 +30,16 @@ struct CustomGestureListener: Listener {
             gestureStatus = snapshot.phase == .ended ? .waiting : .progressing(snapshot)
             return ListenerDecision(stopPropagation: true)
         }
+        let focusedApplicationBundleIdentifier = focusedApplicationBundleIdentifier()
         return modeState.isAdvancedModeActive
-            ? handleAdvanced(snapshot)
-            : handleBasic(snapshot)
+            ? handleAdvanced(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
+            : handleBasic(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
     }
 
-    private mutating func handleAdvanced(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
+    private mutating func handleAdvanced(
+        _ snapshot: TrackpadSnapshot,
+        focusedApplicationBundleIdentifier: String?
+    ) -> ListenerDecision {
         switch snapshot.phase {
         case .began:
             snapshots = [snapshot]
@@ -49,9 +56,13 @@ struct CustomGestureListener: Listener {
             let trainedGestures = library.advancedGestures.filter { (3...5).contains($0.recordings.count) }
             let recording = AdvancedGestureRecognizer.recording(from: snapshots, positionallyAware: true)
             let match = recording.flatMap {
-                AdvancedGestureRecognizer.bestMatch(recording: $0, gestures: trainedGestures)
+                bestAcceptedAdvancedMatch(
+                    recording: $0,
+                    gestures: trainedGestures,
+                    focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier
+                )
             }
-            guard let match, match.distance <= match.gesture.acceptanceThreshold else {
+            guard let match else {
                 gestureStatus = .cancelled(snapshot, reason: .advancedGestureDidNotMatch)
                 return ListenerDecision(stopPropagation: true)
             }
@@ -69,7 +80,10 @@ struct CustomGestureListener: Listener {
         }
     }
 
-    private mutating func handleBasic(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
+    private mutating func handleBasic(
+        _ snapshot: TrackpadSnapshot,
+        focusedApplicationBundleIdentifier: String?
+    ) -> ListenerDecision {
         let gestures = store.snapshot().basicGestures
         guard !gestures.isEmpty else {
             gestureStatus = .waiting
@@ -86,12 +100,21 @@ struct CustomGestureListener: Listener {
             basicStartSnapshot = snapshot
             basicCandidates = candidates
             gestureStatus = .possible(snapshot)
-            return ListenerDecision(suppressions: activeBasicSuppressions)
+            return ListenerDecision(
+                suppressions: activeBasicSuppressions(
+                    focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier
+                )
+            )
         case .ended, .cancelled:
-            let suppressions = activeBasicSuppressions
+            let suppressions = activeBasicSuppressions(
+                focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier
+            )
             if snapshot.phase == .began {
                 resetBasicGesture()
-                return handleBasic(snapshot)
+                return handleBasic(
+                    snapshot,
+                    focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier
+                )
             }
             if snapshot.phase == .ended {
                 resetBasicGesture()
@@ -102,12 +125,18 @@ struct CustomGestureListener: Listener {
         }
 
         guard let start = basicStartSnapshot else { return ListenerDecision() }
-        if let gesture = basicCandidates.first(where: { matches($0, from: start, to: snapshot) }) {
+        let applicableCandidates = orderedApplicableGestures(
+            basicCandidates,
+            focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier
+        )
+        if let gesture = applicableCandidates.first(where: { matches($0, from: start, to: snapshot) }) {
             gestureStatus = .ended(snapshot)
             return ListenerDecision(
                 stopPropagation: true,
                 claimInteraction: snapshot.phase != .ended,
-                suppressions: activeBasicSuppressions,
+                suppressions: activeBasicSuppressions(
+                    focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier
+                ),
                 emittedEvents: [
                     .customGestureRecognized(
                         id: gesture.id,
@@ -118,17 +147,51 @@ struct CustomGestureListener: Listener {
             )
         }
         if snapshot.phase == .ended {
-            let suppressions = activeBasicSuppressions
+            let suppressions = activeBasicSuppressions(
+                focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier
+            )
             resetBasicGesture()
             return ListenerDecision(suppressions: suppressions)
         } else {
             gestureStatus = .progressing(snapshot)
         }
-        return ListenerDecision(suppressions: activeBasicSuppressions)
+        return ListenerDecision(
+            suppressions: activeBasicSuppressions(
+                focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier
+            )
+        )
     }
 
-    /// Filters the library at gesture start so unrelated two-finger scrolling is not intercepted
-    /// merely because an edge-swipe gesture exists elsewhere on the trackpad.
+    private func orderedApplicableGestures<Gesture: ApplicationScopedGesture>(
+        _ gestures: [Gesture],
+        focusedApplicationBundleIdentifier: String?
+    ) -> [Gesture] {
+        let applicable = gestures.filter { $0.applies(to: focusedApplicationBundleIdentifier) }
+        return applicable.filter { $0.isScoped(to: focusedApplicationBundleIdentifier) } +
+            applicable.filter(\.isGlobal)
+    }
+
+    private func bestAcceptedAdvancedMatch(
+        recording: AdvancedGestureRecording,
+        gestures: [AdvancedGesture],
+        focusedApplicationBundleIdentifier: String?
+    ) -> (gesture: AdvancedGesture, distance: Double)? {
+        let orderedGroups = [
+            gestures.filter { $0.isScoped(to: focusedApplicationBundleIdentifier) },
+            gestures.filter(\.isGlobal),
+        ]
+        for group in orderedGroups {
+            if let match = AdvancedGestureRecognizer.bestAcceptedMatch(
+                recording: recording,
+                gestures: group
+            ) {
+                return match
+            }
+        }
+        return nil
+    }
+
+    /// Keeps only gestures whose geometry can begin from the current contact position.
     private func canBegin(_ gesture: BasicGesture, at snapshot: TrackpadSnapshot) -> Bool {
         switch gesture.kind {
         case .edgeSwipe(let edge, _):
@@ -144,8 +207,13 @@ struct CustomGestureListener: Listener {
     }
 
     /// Suppresses native scrolling only while an edge-swipe candidate owns the contact stream.
-    private var activeBasicSuppressions: Set<SuppressionRequest> {
-        guard basicCandidates.contains(where: {
+    private func activeBasicSuppressions(
+        focusedApplicationBundleIdentifier: String?
+    ) -> Set<SuppressionRequest> {
+        let applicableCandidates = basicCandidates.filter {
+            $0.applies(to: focusedApplicationBundleIdentifier)
+        }
+        guard applicableCandidates.contains(where: {
             if case .edgeSwipe = $0.kind { return true }
             return false
         }) else { return [] }

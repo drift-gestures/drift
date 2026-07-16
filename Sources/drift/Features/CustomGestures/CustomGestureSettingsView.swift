@@ -168,6 +168,9 @@ private struct BasicGestureEditor: View {
                         Slider(value: $gesture.edgeProximity, in: 0.01...0.25)
                     }
                 }
+                GestureScopeEditor(
+                    scopedApplicationBundleIdentifiers: $gesture.scopedApplicationBundleIdentifiers
+                )
                 Section("Action") {
                     GestureActionEditor(action: $gesture.action)
                 }
@@ -302,6 +305,9 @@ private struct AdvancedGestureEditor: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                GestureScopeEditor(
+                    scopedApplicationBundleIdentifiers: $gesture.scopedApplicationBundleIdentifiers
+                )
                 Section("Action") {
                     GestureActionEditor(action: $gesture.action)
                     Button("Test Gesture Safely…") { showsTest = true }
@@ -504,6 +510,40 @@ private enum GestureActionType: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
+private struct GestureScopeEditor: View {
+    @Binding var scopedApplicationBundleIdentifiers: Set<String>
+
+    var body: some View {
+        Section("Scope") {
+            LabeledContent(
+                "Runs in",
+                value: scopedApplicationBundleIdentifiers.isEmpty
+                    ? "All Apps"
+                    : "\(scopedApplicationBundleIdentifiers.count) selected"
+            )
+            ForEach(scopedApplicationBundleIdentifiers.sorted(), id: \.self) { bundleIdentifier in
+                HStack {
+                    Text(applicationName(bundleIdentifier))
+                    Spacer()
+                    Button("Remove", role: .destructive) {
+                        scopedApplicationBundleIdentifiers.remove(bundleIdentifier)
+                    }
+                }
+            }
+            Button("Add Application…") {
+                scopedApplicationBundleIdentifiers.formUnion(
+                    chooseApplicationBundleIdentifiers(allowsMultipleSelection: true)
+                )
+            }
+            if !scopedApplicationBundleIdentifiers.isEmpty {
+                Button("Use All Apps") {
+                    scopedApplicationBundleIdentifiers.removeAll()
+                }
+            }
+        }
+    }
+}
+
 private struct GestureActionEditor: View {
     @Binding var action: CustomGestureAction
 
@@ -517,7 +557,10 @@ private struct GestureActionEditor: View {
                 KeyBindingRecorder(mode: .shortcut, value: shortcutBinding)
             }
         case .openApplication(let bundleIdentifier):
-            LabeledContent("Application", value: applicationName(bundleIdentifier))
+            LabeledContent(
+                "Application",
+                value: bundleIdentifier.isEmpty ? "Not selected" : applicationName(bundleIdentifier)
+            )
             Button("Choose Application…", action: chooseApplication)
         case .openURL:
             TextField("URL", text: url)
@@ -604,21 +647,10 @@ private struct GestureActionEditor: View {
         )
     }
 
-    private func applicationName(_ bundleIdentifier: String) -> String {
-        guard !bundleIdentifier.isEmpty,
-              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
-            return "Not selected"
-        }
-        return url.deletingPathExtension().lastPathComponent
-    }
-
     private func chooseApplication() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.applicationBundle]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK,
-              let url = panel.url,
-              let bundleIdentifier = Bundle(url: url)?.bundleIdentifier else { return }
+        guard let bundleIdentifier = chooseApplicationBundleIdentifiers(
+            allowsMultipleSelection: false
+        ).first else { return }
         action = .openApplication(bundleIdentifier: bundleIdentifier)
     }
 
@@ -698,6 +730,24 @@ private extension CustomGestureAction {
 
 private enum GestureActionDefaults {
     static let unselectedScriptURL = URL(fileURLWithPath: "/__drift_unselected_script__")
+}
+
+private func applicationName(_ bundleIdentifier: String) -> String {
+    guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
+        return bundleIdentifier
+    }
+    return url.deletingPathExtension().lastPathComponent
+}
+
+@MainActor
+private func chooseApplicationBundleIdentifiers(
+    allowsMultipleSelection: Bool
+) -> Set<String> {
+    let panel = NSOpenPanel()
+    panel.allowedContentTypes = [.applicationBundle]
+    panel.allowsMultipleSelection = allowsMultipleSelection
+    guard panel.runModal() == .OK else { return [] }
+    return Set(panel.urls.compactMap { Bundle(url: $0)?.bundleIdentifier })
 }
 
 private extension EdgeSegment {

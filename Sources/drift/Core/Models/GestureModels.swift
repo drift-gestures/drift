@@ -54,6 +54,7 @@ struct BasicGesture: Identifiable, Codable, Equatable, Sendable {
     var activationThreshold: Double
     var edgeProximity: Double
     var action: CustomGestureAction
+    var scopedApplicationBundleIdentifiers: Set<String>
 
     init(
         id: UUID,
@@ -62,7 +63,8 @@ struct BasicGesture: Identifiable, Codable, Equatable, Sendable {
         edgeSegment: EdgeSegment = .middle,
         activationThreshold: Double,
         edgeProximity: Double,
-        action: CustomGestureAction
+        action: CustomGestureAction,
+        scopedApplicationBundleIdentifiers: Set<String> = []
     ) {
         self.id = id
         self.name = name
@@ -71,10 +73,12 @@ struct BasicGesture: Identifiable, Codable, Equatable, Sendable {
         self.activationThreshold = activationThreshold
         self.edgeProximity = edgeProximity
         self.action = action
+        self.scopedApplicationBundleIdentifiers = scopedApplicationBundleIdentifiers
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, kind, edgeSegment, activationThreshold, edgeProximity, action
+        case scopedApplicationBundleIdentifiers
     }
 
     init(from decoder: Decoder) throws {
@@ -86,6 +90,10 @@ struct BasicGesture: Identifiable, Codable, Equatable, Sendable {
         activationThreshold = try container.decode(Double.self, forKey: .activationThreshold)
         edgeProximity = try container.decode(Double.self, forKey: .edgeProximity)
         action = try container.decode(CustomGestureAction.self, forKey: .action)
+        scopedApplicationBundleIdentifiers = try container.decodeIfPresent(
+            Set<String>.self,
+            forKey: .scopedApplicationBundleIdentifiers
+        ) ?? []
     }
 }
 
@@ -113,7 +121,66 @@ struct AdvancedGesture: Identifiable, Codable, Equatable, Sendable {
     /// Maximum normalized DTW distance accepted as a match.
     var acceptanceThreshold: Double
     var action: CustomGestureAction
+    var scopedApplicationBundleIdentifiers: Set<String>
+
+    init(
+        id: UUID,
+        name: String,
+        recordings: [AdvancedGestureRecording],
+        isPositionallyAware: Bool,
+        acceptanceThreshold: Double,
+        action: CustomGestureAction,
+        scopedApplicationBundleIdentifiers: Set<String> = []
+    ) {
+        self.id = id
+        self.name = name
+        self.recordings = recordings
+        self.isPositionallyAware = isPositionallyAware
+        self.acceptanceThreshold = acceptanceThreshold
+        self.action = action
+        self.scopedApplicationBundleIdentifiers = scopedApplicationBundleIdentifiers
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, recordings, isPositionallyAware, acceptanceThreshold, action
+        case scopedApplicationBundleIdentifiers
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        recordings = try container.decode([AdvancedGestureRecording].self, forKey: .recordings)
+        isPositionallyAware = try container.decode(Bool.self, forKey: .isPositionallyAware)
+        acceptanceThreshold = try container.decode(Double.self, forKey: .acceptanceThreshold)
+        action = try container.decode(CustomGestureAction.self, forKey: .action)
+        scopedApplicationBundleIdentifiers = try container.decodeIfPresent(
+            Set<String>.self,
+            forKey: .scopedApplicationBundleIdentifiers
+        ) ?? []
+    }
 }
+
+protocol ApplicationScopedGesture {
+    var scopedApplicationBundleIdentifiers: Set<String> { get }
+}
+
+extension ApplicationScopedGesture {
+    var isGlobal: Bool { scopedApplicationBundleIdentifiers.isEmpty }
+
+    func applies(to focusedApplicationBundleIdentifier: String?) -> Bool {
+        guard !isGlobal else { return true }
+        guard let focusedApplicationBundleIdentifier else { return false }
+        return scopedApplicationBundleIdentifiers.contains(focusedApplicationBundleIdentifier)
+    }
+
+    func isScoped(to focusedApplicationBundleIdentifier: String?) -> Bool {
+        !isGlobal && applies(to: focusedApplicationBundleIdentifier)
+    }
+}
+
+extension BasicGesture: ApplicationScopedGesture {}
+extension AdvancedGesture: ApplicationScopedGesture {}
 
 /// The persisted custom-gesture collection and the one global advanced-gesture key.
 struct CustomGestureLibrary: Codable, Equatable, Sendable {
