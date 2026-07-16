@@ -1,5 +1,27 @@
 # Agent Notes
 
+## Agent Workflow
+
+- `.agents/WORKFLOW.md` is the single source of truth for Drift's agent-assisted
+  product-development workflow.
+- Use the project skills in `.agents/skills/` for shaping work, building
+  approved issues, preparing UI handouts, and maintaining the user guide.
+- Skills apply the workflow; they do not override the standing directions in
+  this file.
+
+## Communication
+
+- For larger logic flows, explain the mental model before the details.
+- Show how responsibilities, states, or information move through the system.
+  Use one small diagram or concrete analogy when it materially improves
+  understanding.
+- Avoid presenting a flat inventory of files, stages, or rules without first
+  explaining how the pieces relate and why they exist.
+- Explain every architectural change as a mental model: identify the owners,
+  boundaries, responsibility flow, and why the new structure exists. Do not
+  present architectural changes as only a series of disconnected facts.
+- Keep simple answers simple; do not add diagrams to one-step or obvious work.
+
 ## Standing User Direction
 
 - Follow the user's instructions strictly. Do not do anything against what the user said.

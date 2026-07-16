@@ -1,0 +1,8 @@
+# Terra is the economical default coordinator for Drift.
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+
+[agents]
+# Keep delegation shallow and bounded so one request cannot fan out repeatedly.
+max_threads = 4
+max_depth = 1

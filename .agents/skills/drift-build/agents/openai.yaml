@@ -1,0 +1,4 @@
+interface:
+  display_name: "Drift Build"
+  short_description: "Build an approved Drift issue through a reviewed PR"
+  default_prompt: "Use $drift-build to implement this approved Drift issue through a reviewed PR."
