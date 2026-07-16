@@ -1,0 +1,4 @@
+interface:
+  display_name: "Drift Shape"
+  short_description: "Shape product ideas into approved GitHub issues"
+  default_prompt: "Use $drift-shape to turn this product idea into an approved Drift issue."

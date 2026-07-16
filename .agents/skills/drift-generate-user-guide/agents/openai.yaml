@@ -1,0 +1,4 @@
+interface:
+  display_name: "Drift User Guide"
+  short_description: "Maintain Drift user-facing product documentation"
+  default_prompt: "Use $drift-generate-user-guide to update or audit the Drift user guide."
