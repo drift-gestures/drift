@@ -85,7 +85,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             CustomGestureListener(
                 store: customGestureStore,
                 modeState: customGestureModeState,
-                captureState: customGestureCaptureState
+                captureState: customGestureCaptureState,
+                focusedApplicationBundleIdentifier: {
+                    NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+                }
             ),
             TimerHUDInputListener(
                 hudController: hudController,

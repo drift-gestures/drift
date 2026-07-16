@@ -113,6 +113,304 @@ final class CustomGestureTests: XCTestCase {
         XCTAssertGreaterThan(match?.distance ?? 0, gesture.acceptanceThreshold)
     }
 
+    func testBasicGestureScopeMatchesAnySelectedApplicationExactly() {
+        let gesture = BasicGesture(
+            id: UUID(), name: "scoped", kind: .pinch(direction: .outward),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "test"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor", "com.example.browser"]
+        )
+
+        XCTAssertTrue(gesture.applies(to: "com.example.editor"))
+        XCTAssertTrue(gesture.applies(to: "com.example.browser"))
+        XCTAssertFalse(gesture.applies(to: "com.example.editor.beta"))
+        XCTAssertFalse(gesture.applies(to: nil))
+    }
+
+    func testGlobalGestureAppliesWithoutAFocusedApplication() {
+        let gesture = BasicGesture(
+            id: UUID(), name: "global", kind: .pinch(direction: .outward),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "test")
+        )
+
+        XCTAssertTrue(gesture.applies(to: nil))
+        XCTAssertTrue(gesture.applies(to: "com.example.anything"))
+    }
+
+    func testScopedBasicGestureOverridesMatchingGlobalGesture() throws {
+        let suiteName = "CustomGestureTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = CustomGestureStore(defaults: defaults)
+        let global = BasicGesture(
+            id: UUID(), name: "global", kind: .edgeSwipe(edge: .bottom, direction: .up),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "global")
+        )
+        let scoped = BasicGesture(
+            id: UUID(), name: "scoped", kind: .edgeSwipe(edge: .bottom, direction: .up),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "scoped"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor"]
+        )
+        store.upsert(global)
+        store.upsert(scoped)
+        let modeState = CustomGestureModeState(store: store)
+        var listener = CustomGestureListener(
+            store: store,
+            modeState: modeState,
+            focusedApplicationBundleIdentifier: { "com.example.editor" }
+        )
+
+        _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 1, phase: .began))
+        let result = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.3, frame: 2, phase: .changed))
+
+        guard case .customGestureRecognized(let id, _, .basic) = result.emittedEvents.first else {
+            return XCTFail("Expected a scoped basic gesture")
+        }
+        XCTAssertEqual(id, scoped.id)
+    }
+
+    func testScopedBasicGestureDoesNotRunInAnotherApplication() throws {
+        let suiteName = "CustomGestureTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = CustomGestureStore(defaults: defaults)
+        store.upsert(BasicGesture(
+            id: UUID(), name: "scoped", kind: .edgeSwipe(edge: .bottom, direction: .up),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "scoped"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor"]
+        ))
+        let modeState = CustomGestureModeState(store: store)
+        var listener = CustomGestureListener(
+            store: store,
+            modeState: modeState,
+            focusedApplicationBundleIdentifier: { "com.example.browser" }
+        )
+
+        _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 1, phase: .began))
+        let result = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.3, frame: 2, phase: .changed))
+
+        XCTAssertTrue(result.emittedEvents.isEmpty)
+    }
+
+    func testGlobalBasicGestureRunsWhenMatchingAppScopeDoesNotRecognize() throws {
+        let suiteName = "CustomGestureTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = CustomGestureStore(defaults: defaults)
+        let scoped = BasicGesture(
+            id: UUID(), name: "scoped", kind: .edgeSwipe(edge: .bottom, direction: .left),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "scoped"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor"]
+        )
+        let global = BasicGesture(
+            id: UUID(), name: "global", kind: .edgeSwipe(edge: .bottom, direction: .up),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "global")
+        )
+        store.upsert(scoped)
+        store.upsert(global)
+        let modeState = CustomGestureModeState(store: store)
+        var listener = CustomGestureListener(
+            store: store,
+            modeState: modeState,
+            focusedApplicationBundleIdentifier: { "com.example.editor" }
+        )
+
+        _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 1, phase: .began))
+        let result = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.3, frame: 2, phase: .changed))
+
+        guard case .customGestureRecognized(let id, _, .basic) = result.emittedEvents.first else {
+            return XCTFail("Expected the global basic gesture fallback")
+        }
+        XCTAssertEqual(id, global.id)
+    }
+
+    func testBasicGestureUsesApplicationFocusedWhenRecognitionOccurs() throws {
+        let suiteName = "CustomGestureTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = CustomGestureStore(defaults: defaults)
+        let recognitionAppGesture = BasicGesture(
+            id: UUID(), name: "recognition app", kind: .edgeSwipe(edge: .bottom, direction: .up),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "recognition"),
+            scopedApplicationBundleIdentifiers: ["com.example.recognition"]
+        )
+        store.upsert(recognitionAppGesture)
+        let modeState = CustomGestureModeState(store: store)
+        var focusedApplicationBundleIdentifier = "com.example.start"
+        var listener = CustomGestureListener(
+            store: store,
+            modeState: modeState,
+            focusedApplicationBundleIdentifier: { focusedApplicationBundleIdentifier }
+        )
+
+        _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 1, phase: .began))
+        focusedApplicationBundleIdentifier = "com.example.recognition"
+        let result = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.3, frame: 2, phase: .changed))
+
+        guard case .customGestureRecognized(let id, _, .basic) = result.emittedEvents.first else {
+            return XCTFail("Expected the gesture scoped to the application focused at recognition")
+        }
+        XCTAssertEqual(id, recognitionAppGesture.id)
+    }
+
+    func testAdvancedScopePrefersAcceptedScopedMatchThenFallsBackToGlobal() throws {
+        let performedSnapshots = (0..<20).map { index in
+            trackpadSnapshot(
+                x: Double(index) / 19,
+                frame: index,
+                phase: index == 0 ? .began : (index == 19 ? .ended : .changed)
+            )
+        }
+        let matchingRecording = try XCTUnwrap(
+            AdvancedGestureRecognizer.recording(from: performedSnapshots, positionallyAware: false)
+        )
+        let wrongSnapshots = (0..<20).map { index in
+            trackpadSnapshot(
+                x: 0.2,
+                y: Double(index) / 19,
+                frame: index,
+                phase: index == 0 ? .began : .changed
+            )
+        }
+        let wrongRecording = try XCTUnwrap(
+            AdvancedGestureRecognizer.recording(from: wrongSnapshots, positionallyAware: false)
+        )
+
+        let preferredScoped = AdvancedGesture(
+            id: UUID(), name: "scoped", recordings: Array(repeating: matchingRecording, count: 3),
+            isPositionallyAware: false, acceptanceThreshold: 0.1,
+            action: .openApplication(bundleIdentifier: "scoped"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor"]
+        )
+        let preferredGlobal = AdvancedGesture(
+            id: UUID(), name: "global", recordings: Array(repeating: matchingRecording, count: 3),
+            isPositionallyAware: false, acceptanceThreshold: 0.1,
+            action: .openApplication(bundleIdentifier: "global")
+        )
+        let preferredID = try XCTUnwrap(recognizedAdvancedGestureID(
+            gestures: [preferredGlobal, preferredScoped],
+            snapshots: performedSnapshots,
+            focusedApplicationBundleIdentifier: "com.example.editor"
+        ))
+        XCTAssertEqual(preferredID, preferredScoped.id)
+
+        let global = AdvancedGesture(
+            id: UUID(), name: "global", recordings: Array(repeating: matchingRecording, count: 3),
+            isPositionallyAware: false, acceptanceThreshold: 0.1,
+            action: .openApplication(bundleIdentifier: "global")
+        )
+        let rejectedScoped = AdvancedGesture(
+            id: UUID(), name: "scoped", recordings: Array(repeating: wrongRecording, count: 3),
+            isPositionallyAware: false, acceptanceThreshold: 0.01,
+            action: .openApplication(bundleIdentifier: "scoped"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor"]
+        )
+
+        let fallbackID = try XCTUnwrap(recognizedAdvancedGestureID(
+            gestures: [global, rejectedScoped],
+            snapshots: performedSnapshots,
+            focusedApplicationBundleIdentifier: "com.example.editor"
+        ))
+
+        XCTAssertEqual(fallbackID, global.id)
+    }
+
+    func testScopedAdvancedGestureDoesNotRunInAnotherApplication() throws {
+        let snapshots = (0..<20).map { index in
+            trackpadSnapshot(
+                x: Double(index) / 19,
+                frame: index,
+                phase: index == 0 ? .began : (index == 19 ? .ended : .changed)
+            )
+        }
+        let recording = try XCTUnwrap(
+            AdvancedGestureRecognizer.recording(from: snapshots, positionallyAware: false)
+        )
+        let gesture = AdvancedGesture(
+            id: UUID(), name: "scoped", recordings: Array(repeating: recording, count: 3),
+            isPositionallyAware: false, acceptanceThreshold: 0.1,
+            action: .openApplication(bundleIdentifier: "scoped"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor"]
+        )
+
+        let recognizedID = try recognizedAdvancedGestureID(
+            gestures: [gesture],
+            snapshots: snapshots,
+            focusedApplicationBundleIdentifier: "com.example.browser"
+        )
+
+        XCTAssertNil(recognizedID)
+    }
+
+    func testAdvancedScopeChoosesAnAcceptedScopedCandidateBeforeGlobalFallback() throws {
+        let performedSnapshots = (0..<20).map { index in
+            trackpadSnapshot(
+                x: Double(index) / 19,
+                frame: index,
+                phase: index == 0 ? .began : (index == 19 ? .ended : .changed)
+            )
+        }
+        let closerRejectedSnapshots = (0..<20).map { index in
+            let progress = Double(index) / 19
+            return trackpadSnapshot(
+                x: progress,
+                y: 0.45 + 0.02 * progress,
+                frame: index,
+                phase: index == 0 ? .began : .changed
+            )
+        }
+        let acceptedSnapshots = (0..<20).map { index in
+            let progress = Double(index) / 19
+            return trackpadSnapshot(
+                x: progress,
+                y: 0.45 + 0.05 * progress,
+                frame: index,
+                phase: index == 0 ? .began : .changed
+            )
+        }
+        let performedRecording = try XCTUnwrap(
+            AdvancedGestureRecognizer.recording(from: performedSnapshots, positionallyAware: false)
+        )
+        let closerRejectedRecording = try XCTUnwrap(
+            AdvancedGestureRecognizer.recording(from: closerRejectedSnapshots, positionallyAware: false)
+        )
+        let acceptedRecording = try XCTUnwrap(
+            AdvancedGestureRecognizer.recording(from: acceptedSnapshots, positionallyAware: false)
+        )
+        let global = AdvancedGesture(
+            id: UUID(), name: "global", recordings: Array(repeating: performedRecording, count: 3),
+            isPositionallyAware: false, acceptanceThreshold: 0.1,
+            action: .openApplication(bundleIdentifier: "global")
+        )
+        let closerRejected = AdvancedGesture(
+            id: UUID(), name: "closer", recordings: Array(repeating: closerRejectedRecording, count: 3),
+            isPositionallyAware: false, acceptanceThreshold: 0.001,
+            action: .openApplication(bundleIdentifier: "closer"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor"]
+        )
+        let accepted = AdvancedGesture(
+            id: UUID(), name: "accepted", recordings: Array(repeating: acceptedRecording, count: 3),
+            isPositionallyAware: false, acceptanceThreshold: 0.1,
+            action: .openApplication(bundleIdentifier: "accepted"),
+            scopedApplicationBundleIdentifiers: ["com.example.editor"]
+        )
+
+        let recognizedID = try recognizedAdvancedGestureID(
+            gestures: [global, closerRejected, accepted],
+            snapshots: performedSnapshots,
+            focusedApplicationBundleIdentifier: "com.example.editor"
+        )
+
+        XCTAssertEqual(recognizedID, accepted.id)
+    }
+
     func testAdvancedModeSkipsBasicListeners() {
         var advancedMode = true
         let pipeline = ListenerPipeline(
@@ -320,6 +618,41 @@ final class CustomGestureTests: XCTestCase {
         XCTAssertEqual(library.advancedActivationModifiers, [.option])
     }
 
+    func testSavedGesturesWithoutScopeDecodeAsGlobal() throws {
+        struct LegacyBasicGesture: Encodable {
+            let id = UUID()
+            let name = "basic"
+            let kind = BasicGestureKind.pinch(direction: .inward)
+            let edgeSegment = EdgeSegment.middle
+            let activationThreshold = 0.2
+            let edgeProximity = 0.1
+            let action = CustomGestureAction.openApplication(bundleIdentifier: "test")
+        }
+        struct LegacyAdvancedGesture: Encodable {
+            let id = UUID()
+            let name = "advanced"
+            let recordings: [AdvancedGestureRecording] = []
+            let isPositionallyAware = false
+            let acceptanceThreshold = 0.1
+            let action = CustomGestureAction.openApplication(bundleIdentifier: "test")
+        }
+        struct LegacyLibrary: Encodable {
+            let basicGestures = [LegacyBasicGesture()]
+            let advancedGestures = [LegacyAdvancedGesture()]
+            let advancedActivationModifiers: Set<KeyboardModifier> = [.control]
+        }
+
+        let library = try JSONDecoder().decode(
+            CustomGestureLibrary.self,
+            from: JSONEncoder().encode(LegacyLibrary())
+        )
+
+        XCTAssertEqual(library.basicGestures.first?.scopedApplicationBundleIdentifiers, [])
+        XCTAssertEqual(library.advancedGestures.first?.scopedApplicationBundleIdentifiers, [])
+        XCTAssertTrue(try XCTUnwrap(library.basicGestures.first).applies(to: "com.example.editor"))
+        XCTAssertTrue(try XCTUnwrap(library.advancedGestures.first).applies(to: nil))
+    }
+
     func testBasicEdgeSwipeHonorsConfiguredStartSegment() throws {
         let suiteName = "CustomGestureTests.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -486,6 +819,38 @@ final class CustomGestureTests: XCTestCase {
             contacts: contacts, timestamp: Double(frame), frame: frame, phase: phase,
             center: CGPoint(x: x, y: y), scale: 1, rotation: 0
         )
+    }
+
+    private func recognizedAdvancedGestureID(
+        gestures: [AdvancedGesture],
+        snapshots: [TrackpadSnapshot],
+        focusedApplicationBundleIdentifier: String
+    ) throws -> UUID? {
+        let suiteName = "CustomGestureTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = CustomGestureStore(defaults: defaults)
+        var library = store.snapshot()
+        library.advancedGestures = gestures
+        store.replace(with: library)
+        let modeState = CustomGestureModeState(store: store)
+        modeState.update(modifiers: [.control])
+        var listener = CustomGestureListener(
+            store: store,
+            modeState: modeState,
+            focusedApplicationBundleIdentifier: { focusedApplicationBundleIdentifier }
+        )
+
+        var result = ListenerDecision()
+        for snapshot in snapshots {
+            result = listener.onInteraction(snapshot)
+        }
+        guard let event = result.emittedEvents.first else { return nil }
+        guard case .customGestureRecognized(let id, _, .advanced) = event else {
+            XCTFail("Expected an advanced gesture to be recognized")
+            throw NSError(domain: "CustomGestureTests", code: 1)
+        }
+        return id
     }
 }
 

@@ -21,12 +21,28 @@ enum AdvancedGestureRecognizer {
         recording: AdvancedGestureRecording,
         gestures: [AdvancedGesture]
     ) -> (gesture: AdvancedGesture, distance: Double)? {
+        matches(recording: recording, gestures: gestures).min { $0.distance < $1.distance }
+    }
+
+    static func bestAcceptedMatch(
+        recording: AdvancedGestureRecording,
+        gestures: [AdvancedGesture]
+    ) -> (gesture: AdvancedGesture, distance: Double)? {
+        matches(recording: recording, gestures: gestures)
+            .filter { $0.distance <= $0.gesture.acceptanceThreshold }
+            .min { $0.distance < $1.distance }
+    }
+
+    private static func matches(
+        recording: AdvancedGestureRecording,
+        gestures: [AdvancedGesture]
+    ) -> [(gesture: AdvancedGesture, distance: Double)] {
         gestures.compactMap { gesture -> (AdvancedGesture, Double)? in
             guard !gesture.recordings.isEmpty else { return nil }
             let candidate = gesture.isPositionallyAware ? recording : positionIndependent(recording)
             let distance = gesture.recordings.map { dtw(candidate.samples, $0.samples) }.min() ?? .infinity
             return (gesture, distance)
-        }.min { $0.1 < $1.1 }
+        }
     }
 
     private static func sample(from snapshot: TrackpadSnapshot) -> AdvancedGestureSample {
