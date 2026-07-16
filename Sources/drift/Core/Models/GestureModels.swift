@@ -29,6 +29,15 @@ enum BasicGestureKind: Codable, Equatable, Sendable {
     case edgeSwipe(edge: TrackpadEdge, direction: GestureDirection)
     case pinch(direction: PinchDirection)
     case rotate(direction: RotationDirection)
+
+    var activationThresholdRange: ClosedRange<Double> {
+        switch self {
+        case .edgeSwipe, .pinch:
+            0.03...0.50
+        case .rotate:
+            0.03...(.pi)
+        }
+    }
 }
 
 enum TrackpadEdge: String, Codable, Sendable { case top, bottom, left, right }

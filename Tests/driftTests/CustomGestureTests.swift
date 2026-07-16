@@ -3,6 +3,12 @@ import XCTest
 @testable import drift
 
 final class CustomGestureTests: XCTestCase {
+    func testBasicRotateThresholdCanRequireAHalfTurn() {
+        let range = BasicGestureKind.rotate(direction: .clockwise).activationThresholdRange
+
+        XCTAssertEqual(range.upperBound, .pi, accuracy: 0.000_001)
+    }
+
     func testOpenURLActionRoundTripsAndRequiresAScheme() throws {
         let action = CustomGestureAction.openURL(url: " https://example.com/path?source=gesture#details ")
 

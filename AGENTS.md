@@ -18,7 +18,26 @@
 
 - Whenever writing code, think through the architecture first: extensibility, ownership boundaries, and lifecycle responsibilities should be clear and proper before implementation.
 - Do not write code that merely "just works." Prefer code that fits the existing architecture, has the right ownership model, and will be understandable to maintain or extend later.
-- After completing a task that changes the codebase, provide one consolidated architecture-level change map in the final response. List the functions, views, stores, services, or other code owners that were modified, indicate their location within the architecture, and show how responsibility flows between them. Include one Mermaid flowchart. Do not produce architecture maps after individual edits or in intermediate progress updates.
+- After completing a task that changes application code, provide one consolidated architecture-level change map in the final response. List the functions, views, stores, services, or other code owners that were modified, indicate their location within the architecture, and show how responsibility flows between them. Include one Mermaid flowchart. Do not produce architecture maps after individual edits or in intermediate progress updates. Do not create an architecture map for basic non-code changes, including `.md` documentation writes.
+
+## GitHub Issue Metadata
+
+- Every GitHub issue must explicitly set all three of these properties when it is created:
+  - **Type**
+  - **Priority**
+  - **Effort**
+- Never leave Type, Priority, or Effort unset. Discover the repository's valid issue types, organization field IDs, and option names before creating or updating the issue; never guess them.
+- When creating or updating GitHub issues, use the repository or project’s real fields for priority, effort, status, and similar metadata. Do not duplicate those values in the issue body.
+- If the required project fields are unavailable or cannot be written, stop and report the access blocker instead of substituting body text for fields.
+- Before starting or refreshing GitHub authorization (including a device-login flow), ask the user for approval every time.
+- Always run `gh` commands outside the sandbox by requesting approval through the command popup. Do not first attempt the command inside the sandbox, and do not ask the user to copy and run the command manually.
+- Use GitHub's issue APIs, not project fields, for issue Type and organization-level issue fields. Use API version `2026-03-10`:
+  - After `gh issue create` returns an issue number, run both the Type PATCH command and the field-values POST command below before reporting the issue as created.
+  - List valid issue types with `gh api -H 'X-GitHub-Api-Version: 2026-03-10' repos/OWNER/REPO/issue-types`.
+  - Set Type with `gh api --method PATCH -H 'X-GitHub-Api-Version: 2026-03-10' repos/OWNER/REPO/issues/NUMBER -f type=TYPE_NAME`.
+  - Discover Priority, Effort, and other issue fields and their options with `gh api -H 'X-GitHub-Api-Version: 2026-03-10' orgs/ORG/issue-fields`.
+  - Set issue field values with `gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' repos/OWNER/REPO/issues/NUMBER/issue-field-values --input FIELD_VALUES_JSON`.
+  - Build `FIELD_VALUES_JSON` as `{"issue_field_values":[{"field_id":FIELD_ID,"value":"OPTION_NAME"}]}`. Discover `FIELD_ID` and `OPTION_NAME` from the organization fields response; never guess or hardcode them across repositories.
 
 ## UI Discipline
 

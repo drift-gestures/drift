@@ -162,7 +162,7 @@ private struct BasicGestureEditor: View {
                 }
                 Section("Recognition") {
                     LabeledContent("Activation threshold", value: gesture.activationThreshold.formatted(.number.precision(.fractionLength(2))))
-                    Slider(value: $gesture.activationThreshold, in: 0.03...0.50)
+                    Slider(value: $gesture.activationThreshold, in: resolvedKind.activationThresholdRange)
                     if category == .swipe {
                         LabeledContent("Edge proximity", value: gesture.edgeProximity.formatted(.number.precision(.fractionLength(2))))
                         Slider(value: $gesture.edgeProximity, in: 0.01...0.25)
