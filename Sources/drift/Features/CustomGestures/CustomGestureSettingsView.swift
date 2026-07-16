@@ -552,10 +552,8 @@ private struct GestureActionEditor: View {
             ForEach(GestureActionType.allCases) { Text($0.rawValue).tag($0) }
         }
         switch action {
-        case .keyboardShortcut:
-            LabeledContent("Shortcut") {
-                KeyBindingRecorder(mode: .shortcut, value: shortcutBinding)
-            }
+        case .keyboardShortcut, .keyboardShortcutSequence:
+            KeyboardShortcutSequenceEditor(action: $action)
         case .openApplication(let bundleIdentifier):
             LabeledContent(
                 "Application",
@@ -580,7 +578,7 @@ private struct GestureActionEditor: View {
         Binding(
             get: {
                 switch action {
-                case .keyboardShortcut: .shortcut
+                case .keyboardShortcut, .keyboardShortcutSequence: .shortcut
                 case .openApplication: .application
                 case .openURL: .url
                 case .runScript: .script
@@ -600,21 +598,6 @@ private struct GestureActionEditor: View {
                         arguments: []
                     )
                 }
-            }
-        )
-    }
-
-    private var shortcutBinding: Binding<KeyBindingValue> {
-        Binding(
-            get: {
-                guard case .keyboardShortcut(let keyCode, let modifiers) = action else {
-                    return KeyBindingValue(keyCode: 49, modifiers: [.command])
-                }
-                return KeyBindingValue(keyCode: keyCode, modifiers: modifiers)
-            },
-            set: { value in
-                guard let keyCode = value.keyCode else { return }
-                action = .keyboardShortcut(keyCode: keyCode, modifiers: value.modifiers)
             }
         )
     }
@@ -663,6 +646,116 @@ private struct GestureActionEditor: View {
     }
 }
 
+private struct KeyboardShortcutSequenceEditor: View {
+    @Binding var action: CustomGestureAction
+    @State private var recordingStepIndex: Int?
+
+    private static let maximumStepCount = 7
+    private static let defaultInterStepInterval: TimeInterval = 0.2
+
+    var body: some View {
+        Section("Shortcut Steps") {
+            ForEach(shortcutSteps.indices, id: \.self) { index in
+                LabeledContent("Step \(index + 1)") {
+                    KeyBindingRecorder(
+                        mode: .shortcut,
+                        value: shortcutBinding(at: index),
+                        startsRecording: recordingStepIndex == index
+                    )
+                }
+                HStack {
+                    Button("Move Up") { moveStep(from: index, to: index - 1) }
+                        .disabled(index == shortcutSteps.startIndex)
+                        .accessibilityLabel("Move Step \(index + 1) Up")
+                    Button("Move Down") { moveStep(from: index, to: index + 1) }
+                        .disabled(index == shortcutSteps.index(before: shortcutSteps.endIndex))
+                        .accessibilityLabel("Move Step \(index + 1) Down")
+                    Spacer()
+                    Button("Remove", role: .destructive) { removeStep(at: index) }
+                        .disabled(shortcutSteps.count == 1)
+                }
+            }
+            Button("Add Keyboard Action Step", action: addStep)
+                .disabled(shortcutSteps.count >= Self.maximumStepCount)
+
+            if shortcutSteps.count > 1 {
+                LabeledContent("Interval (ms)") {
+                    TextField("Interval", value: interStepIntervalMilliseconds, format: .number)
+                }
+            }
+        }
+    }
+
+    private var shortcutSteps: [KeyboardShortcut] {
+        switch action {
+        case .keyboardShortcut(let keyCode, let modifiers):
+            [KeyboardShortcut(keyCode: keyCode, modifiers: modifiers)]
+        case .keyboardShortcutSequence(let steps, _):
+            steps
+        case .openApplication, .openURL, .runScript:
+            []
+        }
+    }
+
+    private var interStepInterval: TimeInterval {
+        if case .keyboardShortcutSequence(_, let interval) = action {
+            return interval
+        }
+        return Self.defaultInterStepInterval
+    }
+
+    private var interStepIntervalMilliseconds: Binding<Int> {
+        Binding(
+            get: { Int((interStepInterval * 1_000).rounded()) },
+            set: { setSteps(shortcutSteps, interval: TimeInterval(max(0, $0)) / 1_000) }
+        )
+    }
+
+    private func shortcutBinding(at index: Int) -> Binding<KeyBindingValue> {
+        Binding(
+            get: {
+                let shortcut = shortcutSteps[index]
+                return KeyBindingValue(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers)
+            },
+            set: { value in
+                guard let keyCode = value.keyCode else { return }
+                var steps = shortcutSteps
+                steps[index] = KeyboardShortcut(keyCode: keyCode, modifiers: value.modifiers)
+                setSteps(steps)
+                recordingStepIndex = nil
+            }
+        )
+    }
+
+    private func addStep() {
+        guard shortcutSteps.count < Self.maximumStepCount else { return }
+        let newStepIndex = shortcutSteps.endIndex
+        setSteps(shortcutSteps + [KeyboardShortcut(keyCode: 49, modifiers: [])])
+        recordingStepIndex = newStepIndex
+    }
+
+    private func removeStep(at index: Int) {
+        guard shortcutSteps.count > 1 else { return }
+        var steps = shortcutSteps
+        steps.remove(at: index)
+        setSteps(steps)
+    }
+
+    private func moveStep(from source: Int, to destination: Int) {
+        guard shortcutSteps.indices.contains(source), shortcutSteps.indices.contains(destination) else { return }
+        var steps = shortcutSteps
+        steps.swapAt(source, destination)
+        setSteps(steps)
+    }
+
+    private func setSteps(_ steps: [KeyboardShortcut], interval: TimeInterval? = nil) {
+        action = .keyboardShortcutSequence(
+            steps: steps,
+            interStepInterval: interval ?? interStepInterval
+        )
+    }
+}
+
 private extension BasicGesture {
     static var defaultGesture: BasicGesture {
         BasicGesture(
@@ -702,7 +795,7 @@ private extension BasicGestureKind {
 private extension CustomGestureAction {
     var isConfigured: Bool {
         switch self {
-        case .keyboardShortcut:
+        case .keyboardShortcut, .keyboardShortcutSequence:
             return true
         case .openApplication(let bundleIdentifier):
             return !bundleIdentifier.isEmpty
@@ -717,6 +810,10 @@ private extension CustomGestureAction {
         switch self {
         case .keyboardShortcut(let keyCode, let modifiers):
             return KeyBindingValue(keyCode: keyCode, modifiers: modifiers).displayName
+        case .keyboardShortcutSequence(let steps, _):
+            return steps.map {
+                KeyBindingValue(keyCode: $0.keyCode, modifiers: $0.modifiers).displayName
+            }.joined(separator: " → ")
         case .openApplication(let bundleIdentifier):
             guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
                 return "Open application"

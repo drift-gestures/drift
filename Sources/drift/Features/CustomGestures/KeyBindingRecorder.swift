@@ -63,6 +63,7 @@ enum KeyBindingRecorderMode {
 struct KeyBindingRecorder: View {
     let mode: KeyBindingRecorderMode
     @Binding var value: KeyBindingValue
+    var startsRecording = false
 
     @State private var isRecording = false
     @State private var monitor: Any?
@@ -71,6 +72,12 @@ struct KeyBindingRecorder: View {
     var body: some View {
         Button(isRecording ? prompt : value.displayName) {
             isRecording ? stopRecording() : startRecording()
+        }
+        .onAppear {
+            if startsRecording { startRecording() }
+        }
+        .onChange(of: startsRecording) { shouldStartRecording in
+            if shouldStartRecording { startRecording() }
         }
         .onDisappear(perform: stopRecording)
     }
