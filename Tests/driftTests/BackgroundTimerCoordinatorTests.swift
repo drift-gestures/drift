@@ -107,4 +107,81 @@ final class BackgroundTimerCoordinatorTests: XCTestCase {
         XCTAssertEqual(reloadedStore.durations, PomodoroDurations(focus: 45, shortBreak: 10, longBreak: 30))
         defaults.removePersistentDomain(forName: suiteName)
     }
+
+    func testPausedPomodoroDoesNotCompleteUntilResumed() throws {
+        var now = Date(timeIntervalSinceReferenceDate: 20_000)
+        let coordinator = BackgroundTimerCoordinator(nowProvider: { now })
+        var events: [BackgroundTimerRuntimeEvent] = []
+        coordinator.eventHandler = { events.append($0) }
+
+        coordinator.startPomodoro(durations: PomodoroDurations(focus: 1, shortBreak: 1, longBreak: 1))
+        now = now.addingTimeInterval(30)
+        coordinator.togglePomodoroPause()
+        now = now.addingTimeInterval(120)
+        coordinator.tick()
+
+        XCTAssertTrue(events.isEmpty)
+        XCTAssertTrue(try XCTUnwrap(coordinator.pomodoroSession).isPaused)
+
+        coordinator.togglePomodoroPause()
+        now = now.addingTimeInterval(31)
+        coordinator.tick()
+
+        XCTAssertEqual(events, [.pomodoroBlockCompleted(sessionID: try XCTUnwrap(coordinator.pomodoroSession?.id), block: .focus)])
+    }
+
+    func testResumingPomodoroRestartsTicker() throws {
+        var now = Date(timeIntervalSinceReferenceDate: 21_000)
+        let coordinator = BackgroundTimerCoordinator(nowProvider: { now })
+        var events: [BackgroundTimerRuntimeEvent] = []
+        coordinator.eventHandler = { events.append($0) }
+
+        let durations = PomodoroDurations(focus: 1, shortBreak: 1, longBreak: 1)
+        coordinator.startPomodoro(durations: durations)
+        coordinator.togglePomodoroPause()
+        coordinator.togglePomodoroPause()
+
+        now = now.addingTimeInterval(61)
+        coordinator.tick()
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(coordinator.pomodoroSession?.currentBlock, .shortBreak)
+    }
+
+    func testPausedPomodoroWithActiveTimerStillUpdates() throws {
+        var now = Date(timeIntervalSinceReferenceDate: 22_000)
+        let coordinator = BackgroundTimerCoordinator(nowProvider: { now })
+        var events: [BackgroundTimerRuntimeEvent] = []
+        coordinator.eventHandler = { events.append($0) }
+
+        coordinator.startPomodoro(durations: PomodoroDurations(focus: 25, shortBreak: 5, longBreak: 15))
+        coordinator.togglePomodoroPause()
+
+        let timerID = try XCTUnwrap(coordinator.startTimer(minutes: 1))
+        now = now.addingTimeInterval(61)
+        coordinator.tick()
+
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first, .timerCompleted(id: timerID, duration: 60))
+        XCTAssertNotNil(coordinator.pomodoroSession)
+        XCTAssertTrue(try XCTUnwrap(coordinator.pomodoroSession).isPaused)
+    }
+
+    func testIdleTickDoesNotPublishObjectChange() throws {
+        var now = Date(timeIntervalSinceReferenceDate: 23_000)
+        let coordinator = BackgroundTimerCoordinator(nowProvider: { now })
+
+        coordinator.startPomodoro(durations: PomodoroDurations(focus: 25, shortBreak: 5, longBreak: 15))
+        coordinator.togglePomodoroPause()
+
+        var changeCount = 0
+        let cancellable = coordinator.objectWillChange.sink { changeCount += 1 }
+
+        now = now.addingTimeInterval(60)
+        coordinator.tick()
+
+        XCTAssertEqual(changeCount, 0, "Idle tick while paused should not publish")
+
+        cancellable.cancel()
+    }
 }
