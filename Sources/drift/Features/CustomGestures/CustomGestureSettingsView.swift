@@ -110,7 +110,7 @@ private struct GestureRow: View {
                 Image(systemName: "pencil")
             }
             .buttonStyle(.borderless)
-            .tint(.accentColor)
+            .foregroundStyle(.secondary)
             .accessibilityLabel("Edit \(name)")
             .help("Edit \(name)")
 
@@ -118,6 +118,7 @@ private struct GestureRow: View {
                 Image(systemName: "trash")
             }
             .buttonStyle(.borderless)
+            .foregroundStyle(.red)
             .accessibilityLabel("Delete \(name)")
             .help("Delete \(name)")
         }
@@ -325,7 +326,7 @@ private struct AdvancedGestureEditor: View {
                                     Image(systemName: "pencil")
                                 }
                                 .buttonStyle(.borderless)
-                                .tint(.accentColor)
+                                .foregroundStyle(.secondary)
                                 .accessibilityLabel("Manage recordings")
                                 .help("Manage recordings")
                             }
@@ -436,6 +437,7 @@ private struct AdvancedGestureRecordingSheet: View {
                                     Image(systemName: "trash")
                                 }
                                 .buttonStyle(.borderless)
+                                .foregroundStyle(.red)
                                 .accessibilityLabel("Remove Example \(index + 1)")
                                 .help("Remove Example \(index + 1)")
                             }
@@ -571,6 +573,7 @@ private struct GestureScopeEditor: View {
                         Image(systemName: "trash")
                     }
                     .buttonStyle(.borderless)
+                    .foregroundStyle(.red)
                     .accessibilityLabel("Remove \(applicationName(bundleIdentifier))")
                     .help("Remove \(applicationName(bundleIdentifier))")
                 }
@@ -614,7 +617,7 @@ private struct GestureActionEditor: View {
                             Image(systemName: "pencil")
                         }
                         .buttonStyle(.borderless)
-                        .tint(.accentColor)
+                        .foregroundStyle(.secondary)
                         .accessibilityLabel("Choose a different application")
                         .help("Choose a different application")
                     }
@@ -635,7 +638,7 @@ private struct GestureActionEditor: View {
                             Image(systemName: "pencil")
                         }
                         .buttonStyle(.borderless)
-                        .tint(.accentColor)
+                        .foregroundStyle(.secondary)
                         .accessibilityLabel("Choose a different script")
                         .help("Choose a different script")
                     }
@@ -719,10 +722,18 @@ private struct GestureActionEditor: View {
 
 private struct KeyboardShortcutSequenceEditor: View {
     @Binding var action: CustomGestureAction
-    @State private var recordingStepIndex: Int?
+    @State private var stepRecorderIDs: [UUID]
+    @State private var activeRecorderID: UUID?
 
     private static let maximumStepCount = 7
     private static let defaultInterStepInterval: TimeInterval = 0.2
+
+    init(action: Binding<CustomGestureAction>) {
+        _action = action
+        _stepRecorderIDs = State(
+            initialValue: (0..<Self.stepCount(for: action.wrappedValue)).map { _ in UUID() }
+        )
+    }
 
     var body: some View {
         Section("Shortcut Steps") {
@@ -733,13 +744,15 @@ private struct KeyboardShortcutSequenceEditor: View {
                     KeyBindingRecorder(
                         mode: .shortcut,
                         value: shortcutBinding(at: index),
-                        startsRecording: recordingStepIndex == index
+                        startsRecording: activeRecorderID == recorderID(at: index),
+                        recorderID: recorderID(at: index),
+                        activeRecorderID: $activeRecorderID
                     )
                     Button { moveStep(from: index, to: index - 1) } label: {
                         Image(systemName: "arrow.up")
                     }
                         .buttonStyle(.borderless)
-                        .tint(.accentColor)
+                        .foregroundStyle(.secondary)
                         .disabled(index == shortcutSteps.startIndex)
                         .accessibilityLabel("Move Step \(index + 1) Up")
                         .help("Move Step \(index + 1) Up")
@@ -747,7 +760,7 @@ private struct KeyboardShortcutSequenceEditor: View {
                         Image(systemName: "arrow.down")
                     }
                         .buttonStyle(.borderless)
-                        .tint(.accentColor)
+                        .foregroundStyle(.secondary)
                         .disabled(index == shortcutSteps.index(before: shortcutSteps.endIndex))
                         .accessibilityLabel("Move Step \(index + 1) Down")
                         .help("Move Step \(index + 1) Down")
@@ -755,6 +768,7 @@ private struct KeyboardShortcutSequenceEditor: View {
                         Image(systemName: "trash")
                     }
                         .buttonStyle(.borderless)
+                        .foregroundStyle(.red)
                         .disabled(shortcutSteps.count == 1)
                         .accessibilityLabel("Remove Step \(index + 1)")
                         .help("Remove Step \(index + 1)")
@@ -770,6 +784,20 @@ private struct KeyboardShortcutSequenceEditor: View {
                     TextField("Interval", value: interStepIntervalMilliseconds, format: .number)
                 }
             }
+        }
+        .onChange(of: shortcutSteps.count) { _ in
+            synchronizeRecorderIDs()
+        }
+    }
+
+    private static func stepCount(for action: CustomGestureAction) -> Int {
+        switch action {
+        case .keyboardShortcut:
+            1
+        case .keyboardShortcutSequence(let steps, _):
+            steps.count
+        case .openApplication, .openURL, .runScript:
+            0
         }
     }
 
@@ -809,30 +837,51 @@ private struct KeyboardShortcutSequenceEditor: View {
                 var steps = shortcutSteps
                 steps[index] = KeyboardShortcut(keyCode: keyCode, modifiers: value.modifiers)
                 setSteps(steps)
-                recordingStepIndex = nil
+                activeRecorderID = nil
             }
         )
     }
 
     private func addStep() {
         guard shortcutSteps.count < Self.maximumStepCount else { return }
-        let newStepIndex = shortcutSteps.endIndex
+        let newRecorderID = UUID()
+        stepRecorderIDs.append(newRecorderID)
         setSteps(shortcutSteps + [KeyboardShortcut(keyCode: 49, modifiers: [])])
-        recordingStepIndex = newStepIndex
+        activeRecorderID = newRecorderID
     }
 
     private func removeStep(at index: Int) {
         guard shortcutSteps.count > 1 else { return }
+        activeRecorderID = nil
         var steps = shortcutSteps
         steps.remove(at: index)
+        stepRecorderIDs.remove(at: index)
         setSteps(steps)
     }
 
     private func moveStep(from source: Int, to destination: Int) {
         guard shortcutSteps.indices.contains(source), shortcutSteps.indices.contains(destination) else { return }
+        activeRecorderID = nil
         var steps = shortcutSteps
         steps.swapAt(source, destination)
+        stepRecorderIDs.swapAt(source, destination)
         setSteps(steps)
+    }
+
+    private func recorderID(at index: Int) -> UUID {
+        stepRecorderIDs[index]
+    }
+
+    private func synchronizeRecorderIDs() {
+        let stepCount = shortcutSteps.count
+        if stepRecorderIDs.count < stepCount {
+            stepRecorderIDs += (stepRecorderIDs.count..<stepCount).map { _ in UUID() }
+        } else if stepRecorderIDs.count > stepCount {
+            stepRecorderIDs = Array(stepRecorderIDs.prefix(stepCount))
+        }
+        if let activeRecorderID, !stepRecorderIDs.contains(activeRecorderID) {
+            self.activeRecorderID = nil
+        }
     }
 
     private func setSteps(_ steps: [KeyboardShortcut], interval: TimeInterval? = nil) {
