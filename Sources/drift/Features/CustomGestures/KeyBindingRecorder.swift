@@ -81,7 +81,7 @@ struct KeyBindingRecorder: View {
                 Text(value.displayName)
             }
         }
-        .tint(isRecording ? .yellow : .accentColor)
+        .tint(isRecording ? .orange : .accentColor)
         .accessibilityLabel(isRecording ? "Recording. Stop recording" : value.displayName)
         .accessibilityHint(isRecording ? "Stop recording" : "Start recording")
         .help(isRecording ? "Stop recording" : "Start recording")
