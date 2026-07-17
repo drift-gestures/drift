@@ -450,7 +450,7 @@ struct TimerHUDView: View {
             }
         case (_, .scrollUp), (_, .scrollDown):
             guard let scrollAmount = signedScrollAmount(for: input) else { return }
-            withAnimation {
+            withAnimation(.linear(duration: 0.08)) {
                 switch interactionState.mode {
                 case .timer:
                     _ = interactionState.receiveTimerInput(scrollAmount: scrollAmount)
@@ -743,10 +743,10 @@ private struct ActivePomodoroDurationRow: View {
                     .frame(width: TimerHUDStyle.pomodoroRowIconWidth, alignment: .center)
 
                 Text(displayText)
-                    .drawingGroup()
                     .font(DriftTypography.hudFieldValue)
                     .monospacedDigit()
                     .foregroundStyle(Color.tick)
+                    .transaction { $0.animation = nil }
 
                 Spacer(minLength: 0)
 
