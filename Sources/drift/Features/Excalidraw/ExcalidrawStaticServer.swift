@@ -37,8 +37,12 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
         stateLock.unlock()
 
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: rootDirectory.path, isDirectory: &isDirectory),
-              isDirectory.boolValue
+        guard
+            FileManager.default.fileExists(
+                atPath: rootDirectory.path,
+                isDirectory: &isDirectory
+            ),
+            isDirectory.boolValue
         else {
             throw ServerError.missingRoot(rootDirectory)
         }
@@ -47,7 +51,15 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
         guard descriptor >= 0 else { throw ServerError.socketCreationFailed }
 
         var yes: Int32 = 1
-        guard setsockopt(descriptor, SOL_SOCKET, SO_REUSEADDR, &yes, socklen_t(MemoryLayout<Int32>.size)) == 0 else {
+        guard
+            setsockopt(
+                descriptor,
+                SOL_SOCKET,
+                SO_REUSEADDR,
+                &yes,
+                socklen_t(MemoryLayout<Int32>.size)
+            ) == 0
+        else {
             close(descriptor)
             throw ServerError.socketOptionFailed
         }
@@ -59,8 +71,13 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
         address.sin_addr = in_addr(s_addr: inet_addr("127.0.0.1"))
 
         let didBind = withUnsafePointer(to: &address) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
-                bind(descriptor, socketAddress, socklen_t(MemoryLayout<sockaddr_in>.size))
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                socketAddress in
+                bind(
+                    descriptor,
+                    socketAddress,
+                    socklen_t(MemoryLayout<sockaddr_in>.size)
+                )
             }
         }
         guard didBind == 0 else {
@@ -75,8 +92,10 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
 
         var boundAddress = sockaddr_in()
         var boundLength = socklen_t(MemoryLayout<sockaddr_in>.size)
-        let didReadPort = withUnsafeMutablePointer(to: &boundAddress) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { socketAddress in
+        let didReadPort = withUnsafeMutablePointer(to: &boundAddress) {
+            pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                socketAddress in
                 getsockname(descriptor, socketAddress, &boundLength)
             }
         }
@@ -118,6 +137,20 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
             var addressLength = socklen_t(MemoryLayout<sockaddr>.size)
             let client = accept(descriptor, &address, &addressLength)
             guard client >= 0 else { break }
+            var noSigPipe: Int32 = 1
+
+            guard
+                setsockopt(
+                    client,
+                    SOL_SOCKET,
+                    SO_NOSIGPIPE,
+                    &noSigPipe,
+                    socklen_t(MemoryLayout<Int32>.size)
+                ) == 0
+            else {
+                close(client)
+                continue
+            }
 
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 self?.handle(client: client)
@@ -132,23 +165,31 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
         }
 
         guard let request = readRequest(from: client),
-              let firstLine = request.split(separator: "\r\n", maxSplits: 1).first
+            let firstLine = request.split(separator: "\r\n", maxSplits: 1).first
         else {
-            sendResponse(status: "400 Bad Request", body: Data(), client: client)
+            sendResponse(
+                status: "400 Bad Request",
+                body: Data(),
+                client: client
+            )
             return
         }
 
         let parts = firstLine.split(separator: " ")
         guard parts.count >= 2,
-              parts[0] == "GET"
+            parts[0] == "GET"
         else {
-            sendResponse(status: "405 Method Not Allowed", body: Data(), client: client)
+            sendResponse(
+                status: "405 Method Not Allowed",
+                body: Data(),
+                client: client
+            )
             return
         }
 
         let path = String(parts[1])
         guard let fileURL = fileURL(for: path),
-              let data = try? Data(contentsOf: fileURL)
+            let data = try? Data(contentsOf: fileURL)
         else {
             sendResponse(status: "404 Not Found", body: Data(), client: client)
             return
@@ -177,17 +218,26 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
     }
 
     private func fileURL(for requestPath: String) -> URL? {
-        let pathWithoutQuery = requestPath.split(separator: "?", maxSplits: 1).first.map(String.init) ?? "/"
-        let decoded = pathWithoutQuery.removingPercentEncoding ?? pathWithoutQuery
+        let pathWithoutQuery =
+            requestPath.split(separator: "?", maxSplits: 1).first.map(
+                String.init
+            ) ?? "/"
+        let decoded =
+            pathWithoutQuery.removingPercentEncoding ?? pathWithoutQuery
         guard !decoded.contains("..") else { return nil }
 
-        let relativePath = decoded == "/"
+        let relativePath =
+            decoded == "/"
             ? "index.html"
             : String(decoded.drop(while: { $0 == "/" }))
         guard !relativePath.isEmpty else { return nil }
 
-        let candidate = rootDirectory.appendingPathComponent(relativePath, isDirectory: false).standardizedFileURL
-        guard candidate.path.hasPrefix(rootDirectory.standardizedFileURL.path) else { return nil }
+        let candidate = rootDirectory.appendingPathComponent(
+            relativePath,
+            isDirectory: false
+        ).standardizedFileURL
+        guard candidate.path.hasPrefix(rootDirectory.standardizedFileURL.path)
+        else { return nil }
         return candidate
     }
 
@@ -197,12 +247,10 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
         body: Data,
         client: Int32
     ) {
-        let headers = "HTTP/1.1 \(status)\r\n" +
-            "Content-Length: \(body.count)\r\n" +
-            "Content-Type: \(contentType)\r\n" +
-            "Cache-Control: no-store\r\n" +
-            "Connection: close\r\n" +
-            "\r\n"
+        let headers =
+            "HTTP/1.1 \(status)\r\n" + "Content-Length: \(body.count)\r\n"
+            + "Content-Type: \(contentType)\r\n" + "Cache-Control: no-store\r\n"
+            + "Connection: close\r\n" + "\r\n"
         var response = Data(headers.utf8)
         response.append(body)
         response.withUnsafeBytes { buffer in
@@ -210,10 +258,24 @@ final class ExcalidrawStaticServer: @unchecked Sendable {
             var remaining = response.count
             var offset = 0
             while remaining > 0 {
-                let sent = Darwin.send(client, baseAddress.advanced(by: offset), remaining, 0)
-                guard sent > 0 else { break }
-                remaining -= sent
-                offset += sent
+                let sent = Darwin.send(
+                    client,
+                    baseAddress.advanced(by: offset),
+                    remaining,
+                    0
+                )
+                if sent > 0 {
+                    remaining -= sent
+                    offset += sent
+                } else if sent < 0 {
+
+                    if errno == EPIPE || errno == ECONNRESET {
+                        return
+                    }
+                    return
+                } else {
+                    return
+                }
             }
         }
     }
