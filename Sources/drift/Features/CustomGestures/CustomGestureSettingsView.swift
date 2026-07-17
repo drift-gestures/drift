@@ -42,8 +42,10 @@ struct CustomGestureSettingsPage: View {
                         delete: { model.remove(id: gesture.id) }
                     )
                 }
-                Button("Add Basic Gesture…") {
+                Button {
                     basicEditorGesture = BasicGesture.defaultGesture
+                } label: {
+                    Label("Add Basic Gesture…", systemImage: "plus")
                 }
             }
 
@@ -61,8 +63,10 @@ struct CustomGestureSettingsPage: View {
                         delete: { model.remove(id: gesture.id) }
                     )
                 }
-                Button("Add Advanced Gesture…") {
+                Button {
                     advancedEditorGesture = AdvancedGesture.defaultGesture
+                } label: {
+                    Label("Add Advanced Gesture…", systemImage: "plus")
                 }
             }
         }
@@ -102,8 +106,20 @@ private struct GestureRow: View {
                     .lineLimit(1)
             }
             Spacer()
-            Button("Edit", action: edit)
-            Button("Delete", role: .destructive, action: delete)
+            Button(action: edit) {
+                Image(systemName: "pencil")
+            }
+            .buttonStyle(.borderless)
+            .tint(.accentColor)
+            .accessibilityLabel("Edit \(name)")
+            .help("Edit \(name)")
+
+            Button(role: .destructive, action: delete) {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Delete \(name)")
+            .help("Delete \(name)")
         }
     }
 }
@@ -292,9 +308,28 @@ private struct AdvancedGestureEditor: View {
                         .foregroundStyle(.secondary)
                 }
                 Section("Recordings") {
-                    LabeledContent("Saved examples", value: "\(gesture.recordings.count) of 5")
-                    Button(gesture.recordings.isEmpty ? "Record Examples…" : "Manage Recordings…") {
-                        showsRecorder = true
+                    if gesture.recordings.isEmpty {
+                        LabeledContent("Saved examples", value: "\(gesture.recordings.count) of 5")
+                        Button {
+                            showsRecorder = true
+                        } label: {
+                            Label("Record Examples…", systemImage: "record.circle")
+                        }
+                    } else {
+                        LabeledContent("Saved examples") {
+                            HStack {
+                                Text("\(gesture.recordings.count) of 5")
+                                Button {
+                                    showsRecorder = true
+                                } label: {
+                                    Image(systemName: "pencil")
+                                }
+                                .buttonStyle(.borderless)
+                                .tint(.accentColor)
+                                .accessibilityLabel("Manage recordings")
+                                .help("Manage recordings")
+                            }
+                        }
                     }
                     Text("Three examples are required. Two additional examples are optional.")
                         .foregroundStyle(.secondary)
@@ -395,9 +430,14 @@ private struct AdvancedGestureRecordingSheet: View {
                             HStack {
                                 Text("Example \(index + 1)")
                                 Spacer()
-                                Button("Remove", role: .destructive) {
+                                Button(role: .destructive) {
                                     session.removeRecording(at: index)
+                                } label: {
+                                    Image(systemName: "trash")
                                 }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("Remove Example \(index + 1)")
+                                .help("Remove Example \(index + 1)")
                             }
                         }
                     }
@@ -525,15 +565,22 @@ private struct GestureScopeEditor: View {
                 HStack {
                     Text(applicationName(bundleIdentifier))
                     Spacer()
-                    Button("Remove", role: .destructive) {
+                    Button(role: .destructive) {
                         scopedApplicationBundleIdentifiers.remove(bundleIdentifier)
+                    } label: {
+                        Image(systemName: "trash")
                     }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Remove \(applicationName(bundleIdentifier))")
+                    .help("Remove \(applicationName(bundleIdentifier))")
                 }
             }
-            Button("Add Application…") {
+            Button {
                 scopedApplicationBundleIdentifiers.formUnion(
                     chooseApplicationBundleIdentifiers(allowsMultipleSelection: true)
                 )
+            } label: {
+                Label("Add Application…", systemImage: "plus")
             }
             if !scopedApplicationBundleIdentifiers.isEmpty {
                 Button("Use All Apps") {
@@ -555,21 +602,45 @@ private struct GestureActionEditor: View {
         case .keyboardShortcut, .keyboardShortcutSequence:
             KeyboardShortcutSequenceEditor(action: $action)
         case .openApplication(let bundleIdentifier):
-            LabeledContent(
-                "Application",
-                value: bundleIdentifier.isEmpty ? "Not selected" : applicationName(bundleIdentifier)
-            )
-            Button("Choose Application…", action: chooseApplication)
+            LabeledContent("Application") {
+                if bundleIdentifier.isEmpty {
+                    Button(action: chooseApplication) {
+                        Label("Choose Application…", systemImage: "plus")
+                    }
+                } else {
+                    HStack {
+                        Text(applicationName(bundleIdentifier))
+                        Button(action: chooseApplication) {
+                            Image(systemName: "pencil")
+                        }
+                        .buttonStyle(.borderless)
+                        .tint(.accentColor)
+                        .accessibilityLabel("Choose a different application")
+                        .help("Choose a different application")
+                    }
+                }
+            }
         case .openURL:
             TextField("URL", text: url)
         case .runScript(let executableURL, _):
-            LabeledContent(
-                "Script",
-                value: executableURL == GestureActionDefaults.unselectedScriptURL
-                    ? "Not selected"
-                    : executableURL.lastPathComponent
-            )
-            Button("Choose Script…", action: chooseScript)
+            LabeledContent("Script") {
+                if executableURL == GestureActionDefaults.unselectedScriptURL {
+                    Button(action: chooseScript) {
+                        Label("Choose Script…", systemImage: "plus")
+                    }
+                } else {
+                    HStack {
+                        Text(executableURL.lastPathComponent)
+                        Button(action: chooseScript) {
+                            Image(systemName: "pencil")
+                        }
+                        .buttonStyle(.borderless)
+                        .tint(.accentColor)
+                        .accessibilityLabel("Choose a different script")
+                        .help("Choose a different script")
+                    }
+                }
+            }
             TextField("Arguments", text: scriptArguments)
         }
     }
@@ -656,26 +727,42 @@ private struct KeyboardShortcutSequenceEditor: View {
     var body: some View {
         Section("Shortcut Steps") {
             ForEach(shortcutSteps.indices, id: \.self) { index in
-                LabeledContent("Step \(index + 1)") {
+                HStack {
+                    Text("Step \(index + 1)")
+                    Spacer()
                     KeyBindingRecorder(
                         mode: .shortcut,
                         value: shortcutBinding(at: index),
                         startsRecording: recordingStepIndex == index
                     )
-                }
-                HStack {
-                    Button("Move Up") { moveStep(from: index, to: index - 1) }
+                    Button { moveStep(from: index, to: index - 1) } label: {
+                        Image(systemName: "arrow.up")
+                    }
+                        .buttonStyle(.borderless)
+                        .tint(.accentColor)
                         .disabled(index == shortcutSteps.startIndex)
                         .accessibilityLabel("Move Step \(index + 1) Up")
-                    Button("Move Down") { moveStep(from: index, to: index + 1) }
+                        .help("Move Step \(index + 1) Up")
+                    Button { moveStep(from: index, to: index + 1) } label: {
+                        Image(systemName: "arrow.down")
+                    }
+                        .buttonStyle(.borderless)
+                        .tint(.accentColor)
                         .disabled(index == shortcutSteps.index(before: shortcutSteps.endIndex))
                         .accessibilityLabel("Move Step \(index + 1) Down")
-                    Spacer()
-                    Button("Remove", role: .destructive) { removeStep(at: index) }
+                        .help("Move Step \(index + 1) Down")
+                    Button(role: .destructive) { removeStep(at: index) } label: {
+                        Image(systemName: "trash")
+                    }
+                        .buttonStyle(.borderless)
                         .disabled(shortcutSteps.count == 1)
+                        .accessibilityLabel("Remove Step \(index + 1)")
+                        .help("Remove Step \(index + 1)")
                 }
             }
-            Button("Add Keyboard Action Step", action: addStep)
+            Button(action: addStep) {
+                Label("Add Keyboard Action Step", systemImage: "plus")
+            }
                 .disabled(shortcutSteps.count >= Self.maximumStepCount)
 
             if shortcutSteps.count > 1 {
