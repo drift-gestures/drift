@@ -71,11 +71,13 @@ final class BackgroundTimerCoordinator: ObservableObject {
             timers[index].startedAt = now
             timers[index].endsAt = now.addingTimeInterval(pausedRemaining)
             timers[index].pausedRemaining = nil
+            objectWillChange.send()
+            ensureTicker()
         } else {
             timers[index].pausedRemaining = timers[index].remainingSeconds(now: now)
+            objectWillChange.send()
+            stopTickerIfIdle()
         }
-        objectWillChange.send()
-        ensureTicker()
     }
 
     /// Starts or replaces the active Pomodoro session.
@@ -106,11 +108,13 @@ final class BackgroundTimerCoordinator: ObservableObject {
             session.blockStartedAt = now
             session.blockEndsAt = now.addingTimeInterval(pausedRemaining)
             session.pausedRemaining = nil
+            pomodoroSession = session
+            ensureTicker()
         } else {
             session.pausedRemaining = session.remainingSeconds(now: now)
+            pomodoroSession = session
+            stopTickerIfIdle()
         }
-        pomodoroSession = session
-        ensureTicker()
     }
 
     /// Skips the current Pomodoro block.
@@ -188,7 +192,11 @@ final class BackgroundTimerCoordinator: ObservableObject {
             emittedEvents.append(.pomodoroBlockCompleted(sessionID: sessionID, block: completedBlock))
         }
 
-        objectWillChange.send()
+        let hasActiveWork = timers.contains { !$0.isCompleted && !$0.isPaused }
+            || (pomodoroSession.map { !$0.isPaused } ?? false)
+        if hasActiveWork {
+            objectWillChange.send()
+        }
         emittedEvents.forEach { eventHandler?($0) }
         stopTickerIfIdle()
     }
@@ -214,8 +222,12 @@ final class BackgroundTimerCoordinator: ObservableObject {
     /// Tears down ticking when no active work needs it.
     private func stopTickerIfIdle() {
         let hasActiveTimers = timers.contains { !$0.isCompleted && !$0.isPaused }
-        let hasPomodoro = pomodoroSession != nil
-        guard !hasActiveTimers && !hasPomodoro else { return }
+        let hasActivePomodoro = if let session = pomodoroSession {
+            !session.isPaused
+        } else {
+            false
+        }
+        guard !hasActiveTimers && !hasActivePomodoro else { return }
 
         ticker?.invalidate()
         ticker = nil
