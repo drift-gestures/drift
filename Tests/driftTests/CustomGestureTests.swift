@@ -23,6 +23,42 @@ final class CustomGestureTests: XCTestCase {
         XCTAssertNil(CustomGestureAction.openURL(url: "not a URL").urlToOpen)
     }
 
+    func testLegacyKeyboardShortcutActionDecodesAsAnEditableSingleStep() throws {
+        let legacyAction = """
+        {"keyboardShortcut":{"keyCode":48,"modifiers":["command"]}}
+        """.data(using: .utf8)!
+
+        let action = try JSONDecoder().decode(CustomGestureAction.self, from: legacyAction)
+
+        XCTAssertEqual(action, .keyboardShortcut(keyCode: 48, modifiers: [.command]))
+        XCTAssertEqual(
+            CustomGestureActionPerformer.executionPlan(for: action),
+            [
+                KeyboardShortcutExecutionStep(
+                    shortcut: KeyboardShortcut(keyCode: 48, modifiers: [.command]),
+                    delayBefore: nil
+                ),
+            ]
+        )
+    }
+
+    func testKeyboardShortcutSequenceRoundTripsThroughPersistenceCoding() throws {
+        let action = CustomGestureAction.keyboardShortcutSequence(
+            steps: [
+                KeyboardShortcut(keyCode: 36, modifiers: [.command]),
+                KeyboardShortcut(keyCode: 53, modifiers: []),
+            ],
+            interStepInterval: 0.2
+        )
+
+        let decoded = try JSONDecoder().decode(
+            CustomGestureAction.self,
+            from: JSONEncoder().encode(action)
+        )
+
+        XCTAssertEqual(decoded, action)
+    }
+
     func testAdvancedRecordingIsResampledToFixedSize() {
         let snapshots = (0..<12).map { index in
             trackpadSnapshot(x: Double(index) / 11, frame: index, phase: index == 0 ? .began : .changed)
@@ -720,6 +756,82 @@ final class CustomGestureTests: XCTestCase {
         XCTAssertTrue(events[0].flags.contains(.maskControl))
         XCTAssertTrue(events[2].flags.contains(.maskControl))
         XCTAssertFalse(events[3].flags.contains(.maskControl))
+    }
+
+    func testKeyboardShortcutSequenceExecutionPlanPreservesOrderAndDelaysOnlyBetweenSteps() {
+        let first = KeyboardShortcut(keyCode: 0, modifiers: [.command])
+        let second = KeyboardShortcut(keyCode: 1, modifiers: [.shift])
+        let third = KeyboardShortcut(keyCode: 2, modifiers: [])
+        let plan = CustomGestureActionPerformer.executionPlan(
+            for: .keyboardShortcutSequence(
+                steps: [first, second, third],
+                interStepInterval: 0.2
+            )
+        )
+
+        XCTAssertEqual(plan.map(\.shortcut), [first, second, third])
+        XCTAssertEqual(plan.map(\.delayBefore), [nil, 0.2, 0.2])
+    }
+
+    func testKeyboardShortcutSequenceProducesCompleteEventsForEveryStepInOrder() {
+        let action = CustomGestureAction.keyboardShortcutSequence(
+            steps: [
+                KeyboardShortcut(keyCode: 0, modifiers: [.command]),
+                KeyboardShortcut(keyCode: 1, modifiers: [.shift]),
+            ],
+            interStepInterval: 0.2
+        )
+
+        let events = CustomGestureActionPerformer.executionPlan(for: action).flatMap { step in
+            CustomGestureActionPerformer.keyboardEvents(
+                keyCode: step.shortcut.keyCode,
+                modifiers: step.shortcut.modifiers,
+                source: nil
+            )
+        }
+
+        XCTAssertEqual(
+            events.map { $0.getIntegerValueField(.keyboardEventKeycode) },
+            [55, 0, 0, 55, 56, 1, 1, 56]
+        )
+        XCTAssertEqual(
+            events.map { $0.type.rawValue },
+            [
+                CGEventType.flagsChanged.rawValue,
+                CGEventType.keyDown.rawValue,
+                CGEventType.keyUp.rawValue,
+                CGEventType.flagsChanged.rawValue,
+                CGEventType.flagsChanged.rawValue,
+                CGEventType.keyDown.rawValue,
+                CGEventType.keyUp.rawValue,
+                CGEventType.flagsChanged.rawValue,
+            ]
+        )
+    }
+
+    @MainActor
+    func testKeyboardShortcutSequenceWaitsOnlyBetweenCompleteStepLifecycles() async {
+        let first = KeyboardShortcut(keyCode: 0, modifiers: [.command])
+        let second = KeyboardShortcut(keyCode: 1, modifiers: [.shift])
+        let third = KeyboardShortcut(keyCode: 2, modifiers: [])
+        let plan = CustomGestureActionPerformer.executionPlan(
+            for: .keyboardShortcutSequence(
+                steps: [first, second, third],
+                interStepInterval: 0.2
+            )
+        )
+        var operations: [String] = []
+
+        await CustomGestureActionPerformer.execute(
+            plan: plan,
+            wait: { interval in operations.append("wait \(interval)") },
+            performStep: { shortcut in operations.append("step \(shortcut.keyCode)") }
+        )
+
+        XCTAssertEqual(
+            operations,
+            ["step 0", "wait 0.2", "step 1", "wait 0.2", "step 2"]
+        )
     }
 
     func testCaptureStatePreventsConfiguredGestureActionEvent() throws {

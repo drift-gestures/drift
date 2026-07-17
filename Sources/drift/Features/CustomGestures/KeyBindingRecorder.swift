@@ -63,16 +63,57 @@ enum KeyBindingRecorderMode {
 struct KeyBindingRecorder: View {
     let mode: KeyBindingRecorderMode
     @Binding var value: KeyBindingValue
+    var startsRecording = false
+    var recorderID: UUID?
+    var activeRecorderID: Binding<UUID?>?
 
-    @State private var isRecording = false
+    @State private var isLocallyRecording = false
     @State private var monitor: Any?
     @State private var capturedModifiers: Set<KeyboardModifier> = []
 
     var body: some View {
-        Button(isRecording ? prompt : value.displayName) {
+        Button {
             isRecording ? stopRecording() : startRecording()
+        } label: {
+            if isRecording {
+                Label(prompt, systemImage: "stop.fill")
+            } else {
+                Text(value.displayName)
+            }
         }
-        .onDisappear(perform: stopRecording)
+        .tint(isRecording ? .orange : .accentColor)
+        .accessibilityLabel(isRecording ? "Recording. Stop recording" : value.displayName)
+        .accessibilityHint(isRecording ? "Stop recording" : "Start recording")
+        .help(isRecording ? "Stop recording" : "Start recording")
+        .onAppear {
+            if isSharedRecorderActive {
+                beginRecording()
+            } else if startsRecording {
+                startRecording()
+            }
+        }
+        .onChange(of: startsRecording) { shouldStartRecording in
+            if shouldStartRecording { startRecording() }
+        }
+        .onChange(of: isSharedRecorderActive) { shouldRecord in
+            if shouldRecord {
+                beginRecording()
+            } else {
+                stopRecording(clearSharedActiveRecorder: false)
+            }
+        }
+        .onDisappear {
+            stopRecording()
+        }
+    }
+
+    private var isRecording: Bool {
+        isSharedRecorderActive || isLocallyRecording
+    }
+
+    private var isSharedRecorderActive: Bool {
+        guard let recorderID, let activeRecorderID else { return false }
+        return activeRecorderID.wrappedValue == recorderID
     }
 
     private var prompt: String {
@@ -83,8 +124,17 @@ struct KeyBindingRecorder: View {
     }
 
     private func startRecording() {
+        if let recorderID, let activeRecorderID {
+            activeRecorderID.wrappedValue = recorderID
+        } else {
+            beginRecording()
+        }
+    }
+
+    private func beginRecording() {
+        guard monitor == nil else { return }
         capturedModifiers = []
-        isRecording = true
+        isLocallyRecording = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
             let modifiers = event.modifierFlags.keyboardModifiers
             switch mode {
@@ -105,11 +155,14 @@ struct KeyBindingRecorder: View {
         }
     }
 
-    private func stopRecording() {
+    private func stopRecording(clearSharedActiveRecorder: Bool = true) {
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
-        isRecording = false
+        isLocallyRecording = false
         capturedModifiers = []
+        if clearSharedActiveRecorder, activeRecorderID?.wrappedValue == recorderID {
+            activeRecorderID?.wrappedValue = nil
+        }
     }
 }
 

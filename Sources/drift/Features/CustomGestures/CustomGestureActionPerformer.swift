@@ -7,11 +7,8 @@ enum CustomGestureActionPerformer {
     @MainActor
     static func perform(_ action: CustomGestureAction) {
         switch action {
-        case .keyboardShortcut(let keyCode, let modifiers):
-            let source = CGEventSource(stateID: .hidSystemState)
-            keyboardEvents(keyCode: keyCode, modifiers: modifiers, source: source).forEach {
-                $0.post(tap: .cghidEventTap)
-            }
+        case .keyboardShortcut, .keyboardShortcutSequence:
+            performKeyboardShortcuts(executionPlan(for: action))
         case .openApplication(let bundleIdentifier):
             guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
             NSWorkspace.shared.openApplication(at: url, configuration: .init())
@@ -25,6 +22,66 @@ enum CustomGestureActionPerformer {
                 process.arguments = arguments
                 try? process.run()
             }
+        }
+    }
+
+    /// Converts persisted shortcut actions into a delay-aware plan. Keeping this separate from
+    /// event posting makes sequence order and timing testable without sleeping in tests.
+    static func executionPlan(for action: CustomGestureAction) -> [KeyboardShortcutExecutionStep] {
+        let shortcuts: [KeyboardShortcut]
+        let interStepInterval: TimeInterval
+        switch action {
+        case .keyboardShortcut(let keyCode, let modifiers):
+            shortcuts = [KeyboardShortcut(keyCode: keyCode, modifiers: modifiers)]
+            interStepInterval = 0
+        case .keyboardShortcutSequence(let steps, let interval):
+            shortcuts = steps
+            interStepInterval = interval
+        case .openApplication, .openURL, .runScript:
+            return []
+        }
+
+        return shortcuts.enumerated().map { index, shortcut in
+            KeyboardShortcutExecutionStep(
+                shortcut: shortcut,
+                delayBefore: index == 0 ? nil : interStepInterval
+            )
+        }
+    }
+
+    @MainActor
+    private static func performKeyboardShortcuts(_ plan: [KeyboardShortcutExecutionStep]) {
+        Task { @MainActor in
+            let source = CGEventSource(stateID: .hidSystemState)
+            await execute(
+                plan: plan,
+                wait: { delay in
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                },
+                performStep: { shortcut in
+                keyboardEvents(
+                    keyCode: shortcut.keyCode,
+                    modifiers: shortcut.modifiers,
+                    source: source
+                ).forEach { $0.post(tap: .cghidEventTap) }
+                }
+            )
+        }
+    }
+
+    /// Executes one complete lifecycle at a time, delaying only before later steps. The injected
+    /// collaborators make sequencing verifiable without posting events or sleeping in tests.
+    @MainActor
+    static func execute(
+        plan: [KeyboardShortcutExecutionStep],
+        wait: @escaping (TimeInterval) async -> Void,
+        performStep: @escaping (KeyboardShortcut) -> Void
+    ) async {
+        for step in plan {
+            if let delay = step.delayBefore, delay > 0 {
+                await wait(delay)
+            }
+            performStep(step.shortcut)
         }
     }
 
@@ -70,6 +127,12 @@ enum CustomGestureActionPerformer {
         event?.flags = flags
         return event
     }
+}
+
+struct KeyboardShortcutExecutionStep: Equatable {
+    let shortcut: KeyboardShortcut
+    /// A delay exists only before a non-initial shortcut step.
+    let delayBefore: TimeInterval?
 }
 
 private extension KeyboardModifier {

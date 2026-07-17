@@ -8,10 +8,25 @@ enum InputBackendName: String {
 
 /// An action performed after a custom gesture is recognized.
 enum CustomGestureAction: Codable, Equatable, Sendable {
+    /// The legacy, persisted single-shortcut representation. Keep this case so existing saved
+    /// gesture libraries continue to decode without a migration.
     case keyboardShortcut(keyCode: UInt16, modifiers: Set<KeyboardModifier>)
+    /// An ordered collection of shortcut presses with a shared delay between adjacent steps.
+    case keyboardShortcutSequence(steps: [KeyboardShortcut], interStepInterval: TimeInterval)
     case openApplication(bundleIdentifier: String)
     case openURL(url: String)
     case runScript(executableURL: URL, arguments: [String])
+}
+
+/// One recorded key press in a keyboard-shortcut sequence.
+struct KeyboardShortcut: Codable, Equatable, Sendable {
+    let keyCode: UInt16
+    let modifiers: Set<KeyboardModifier>
+
+    init(keyCode: UInt16, modifiers: Set<KeyboardModifier>) {
+        self.keyCode = keyCode
+        self.modifiers = modifiers
+    }
 }
 
 extension CustomGestureAction {
