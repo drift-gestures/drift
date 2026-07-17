@@ -2,6 +2,13 @@ import Foundation
 
 /// The single listener responsible for all user-configured basic and advanced gestures.
 struct CustomGestureListener: Listener {
+    /// The recognizer selected when a contact sequence starts. Modifier changes must not move an
+    /// in-flight contact into the other recognizer because their accumulated state is incompatible.
+    private enum ContactRecognizer {
+        case advanced
+        case basic
+    }
+
     var gestureStatus: GestureStatus = .waiting
     let listensDuringAdvancedGestureMode = true
     private let store: CustomGestureStore
@@ -11,6 +18,7 @@ struct CustomGestureListener: Listener {
     private var snapshots: [TrackpadSnapshot] = []
     private var basicStartSnapshot: TrackpadSnapshot?
     private var basicCandidates: [BasicGesture] = []
+    private var activeContactRecognizer: ContactRecognizer?
 
     init(
         store: CustomGestureStore,
@@ -31,9 +39,29 @@ struct CustomGestureListener: Listener {
             return ListenerDecision(stopPropagation: true)
         }
         let focusedApplicationBundleIdentifier = focusedApplicationBundleIdentifier()
-        return modeState.isAdvancedModeActive
-            ? handleAdvanced(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
-            : handleBasic(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
+        let recognizer = recognizer(for: snapshot)
+        let decision = switch recognizer {
+        case .advanced:
+            handleAdvanced(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
+        case .basic:
+            handleBasic(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
+        }
+        if snapshot.phase == .ended {
+            resetContactRecognition()
+        }
+        return decision
+    }
+
+    /// Selects a recognizer only at a contact boundary. Once selected, it receives every later
+    /// snapshot through lift even if the advanced activation binding changes independently.
+    private mutating func recognizer(for snapshot: TrackpadSnapshot) -> ContactRecognizer {
+        if snapshot.phase == .began {
+            resetContactRecognition()
+            let recognizer: ContactRecognizer = modeState.isAdvancedModeActive ? .advanced : .basic
+            activeContactRecognizer = recognizer
+            return recognizer
+        }
+        return activeContactRecognizer ?? (modeState.isAdvancedModeActive ? .advanced : .basic)
     }
 
     private mutating func handleAdvanced(
@@ -223,6 +251,16 @@ struct CustomGestureListener: Listener {
     private mutating func resetBasicGesture() {
         basicStartSnapshot = nil
         basicCandidates.removeAll(keepingCapacity: true)
+        gestureStatus = .waiting
+    }
+
+    /// Clears both recognizers at a contact boundary so no advanced samples or basic candidates
+    /// can survive into the next sequence.
+    private mutating func resetContactRecognition() {
+        snapshots.removeAll(keepingCapacity: true)
+        basicStartSnapshot = nil
+        basicCandidates.removeAll(keepingCapacity: true)
+        activeContactRecognizer = nil
         gestureStatus = .waiting
     }
 

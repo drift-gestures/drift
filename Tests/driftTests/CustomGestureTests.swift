@@ -462,6 +462,72 @@ final class CustomGestureTests: XCTestCase {
         XCTAssertEqual(basicResult.activities.count, 2)
     }
 
+    func testAdvancedContactStaysAdvancedAfterActivationModifiersReleaseAndRearmsBasic() throws {
+        let suiteName = "CustomGestureTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = CustomGestureStore(defaults: defaults)
+        let advancedSnapshots = [
+            trackpadSnapshot(x: 0.2, y: 0.8, frame: 1, phase: .began),
+            trackpadSnapshot(x: 0.3, y: 0.7, frame: 2, phase: .changed),
+            trackpadSnapshot(x: 0.4, y: 0.6, frame: 3, phase: .ended),
+        ]
+        let recording = try XCTUnwrap(
+            AdvancedGestureRecognizer.recording(from: advancedSnapshots, positionallyAware: true)
+        )
+        let advancedGesture = AdvancedGesture(
+            id: UUID(), name: "advanced", recordings: Array(repeating: recording, count: 3),
+            isPositionallyAware: true, acceptanceThreshold: 0.001,
+            action: .openApplication(bundleIdentifier: "advanced")
+        )
+        let basicGesture = BasicGesture(
+            id: UUID(), name: "bottom up", kind: .edgeSwipe(edge: .bottom, direction: .up),
+            activationThreshold: 0.2, edgeProximity: 0.1,
+            action: .openApplication(bundleIdentifier: "basic")
+        )
+        var library = store.snapshot()
+        library.advancedGestures = [advancedGesture]
+        library.basicGestures = [basicGesture]
+        store.replace(with: library)
+
+        for releaseAfterFrame in [1, 2, 3] {
+            let modeState = CustomGestureModeState(store: store)
+            var listener = CustomGestureListener(store: store, modeState: modeState)
+            modeState.update(modifiers: [.control])
+
+            _ = listener.onInteraction(advancedSnapshots[0])
+            if releaseAfterFrame == 1 {
+                modeState.update(modifiers: [])
+            }
+            _ = listener.onInteraction(advancedSnapshots[1])
+            if releaseAfterFrame == 2 {
+                modeState.update(modifiers: [])
+            }
+            let advancedResult = listener.onInteraction(advancedSnapshots[2])
+            if releaseAfterFrame == 3 {
+                modeState.update(modifiers: [])
+            }
+
+            guard case .customGestureRecognized(let id, _, .advanced) = advancedResult.emittedEvents.first else {
+                return XCTFail("Expected the contact to finish in the advanced recognizer")
+            }
+            XCTAssertEqual(id, advancedGesture.id)
+            XCTAssertTrue(advancedResult.stopPropagation)
+            guard case .waiting = listener.gestureStatus else {
+                return XCTFail("Expected the listener to reset after the advanced contact ends")
+            }
+
+            _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 4, phase: .began))
+            let basicResult = listener.onInteraction(
+                trackpadSnapshot(x: 0.5, y: 0.3, frame: 5, phase: .changed)
+            )
+            guard case .customGestureRecognized(let id, _, .basic) = basicResult.emittedEvents.first else {
+                return XCTFail("Expected the following contact to use the basic recognizer")
+            }
+            XCTAssertEqual(id, basicGesture.id)
+        }
+    }
+
     func testCustomListenerRecognizesConfiguredBasicGestureWithoutActivationKey() throws {
         let suiteName = "CustomGestureTests.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
