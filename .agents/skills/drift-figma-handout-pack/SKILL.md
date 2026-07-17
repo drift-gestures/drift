@@ -1,61 +1,125 @@
 ---
 name: drift-figma-handout-pack
-description: Turn Figma designs, screenshots, exports, and product discussion into an implementation-ready Drift UI handout. Use while shaping or building any Drift UI, UX, screen, HUD, settings flow, component, or visual change, especially when direct Figma MCP access is limited or unavailable.
+description: Create a complete, read-only design handout from a Figma selection URL and save it locally with reference screenshots. Use when a user provides a Figma design link containing a node-id and asks for a design handoff, handout, implementation packet, property extraction, screenshots, or documented design specifications.
 ---
 
-# Prepare a Drift Figma Handout Pack
+# Drift Figma Handout Pack
 
-Find and read the repository-root `.agents/WORKFLOW.md`, the active `AGENTS.md`
-UI rules, and relevant existing Drift UI code before preparing the handout.
+Inspect exactly one linked Figma selection and create a screenshot-backed handout without modifying Figma.
 
-Prefer running this skill through the project `drift-ui-specialist` agent so
-design interpretation and final visual judgment use Sol/High. Keep routine UI
-implementation with the Terra-based `drift-engineer`.
+## Required input
 
-The handout bridges the gap between visual evidence and implementation intent.
-It does not require Figma MCP access. Use whatever the user can provide:
-screenshots, exported frames, measurements, a Figma URL, existing assets, or a
-spoken description.
+Always ask the user for a Figma design selection URL before invoking this
+skill. Require that URL to contain a `node-id` query parameter, and continue
+only after the user supplies it and explicitly asks to prepare or start the
+design handout. If the selection link is missing, pause and request it; do not
+substitute product discussion, screenshots without a source selection, or a
+whole-file Figma URL. Do not inspect unrelated frames, pages, or files.
 
-## Understand before specifying
+## Output contract
 
-- Inspect existing design tokens, components, layout conventions, and nearby
-  screens.
-- Treat screenshots as evidence of appearance, not complete behavior.
-- Ask only about ambiguities that materially affect the result.
-- Never invent motion, interaction behavior, dimensions, or new design values.
-- Record whether each important detail is exact, relational, or intentionally
-  flexible.
+Create this structure in the current project or workspace:
 
-## Produce the handout
+```text
+design-handout/
+└── <file-and-node-slug>/
+    ├── handoud.md
+    └── assets/
+        ├── selection-overview.png
+        ├── layer-structure.png
+        ├── design-properties.png
+        ├── prototype-properties.png
+        └── detail-*.png
+```
 
-Create a compact `Design handout` section suitable for the GitHub issue. Include
-only applicable information:
+The filename is intentionally `handoud.md`; preserve that spelling.
 
-- linked or attached visual references and which state each shows;
-- product intent and the visual hierarchy users should perceive;
-- layout regions and spacing relationships;
-- typography, colors, materials, icons, and reusable Drift components;
-- default, hover, pressed, focused, selected, disabled, empty, loading, error,
-  and permission states;
-- window sizing, resizing, scrolling, and content-overflow behavior;
-- mouse, keyboard, trackpad, and accessibility interactions;
-- explicitly designed motion;
-- exact constraints versus areas where engineering judgment is allowed;
-- a visual acceptance checklist.
+Initialize the folder with:
 
-Prefer relationships such as alignment, grouping, and stable reserved space over
-isolated pixel guesses. If an exact value is required but unavailable, surface
-the gap instead of fabricating it.
+```bash
+python3 scripts/init_handout.py "<figma-selection-url>" --root "<workspace-root>"
+```
 
-## Support implementation and review
+Use `--name <slug>` only when the user supplies a handout name.
 
-During implementation, use the approved handout as the UI contract. Preserve
-existing Drift values unless the user approves a new value.
+## Read-only rules
 
-During visual review, compare captures of the running interface with both the
-references and the written intent. Judge behavior across relevant states and
-window sizes, not only a single static frame.
+- Treat Figma as strictly read-only.
+- Never create, edit, move, resize, rename, delete, comment on, publish, share, or change any node, property, component, variable, file, or setting.
+- Allow only navigation, zooming, panning, selecting the target or its descendants, expanding existing panels, and reading properties.
+- Do not enable accessibility or screen-reader settings merely to expose more data.
+- Do not inspect sibling designs except where they are unavoidably visible in the layer list.
+- Stop if the requested inspection would require a design mutation.
 
-If implementation evidence reveals that the handout was ambiguous, clarify the
-handout rather than silently choosing a new product direction.
+## Workflow
+
+1. Validate the link and initialize the output folder.
+2. Load and follow the Computer Use skill.
+3. Prefer the Figma desktop app. Open or navigate to only the supplied file and node.
+4. Confirm the selected node name and dimensions before collecting details.
+5. Save an uncropped overview screenshot as `assets/selection-overview.png`.
+6. Inspect and record:
+   - Node name, ID, type, position, dimensions, rotation, visibility, opacity, clipping, radius, and blend mode.
+   - Auto-layout direction, gaps, padding, alignment, wrapping, sizing modes, constraints, and resizing rules.
+   - Layer hierarchy, component instances, variants, properties, states, nested assets, and lock status.
+   - Typography family, style, weight, size, line height, letter spacing, alignment, decoration, truncation, and wrapping.
+   - Fill, stroke, effect, shadow, blur, opacity, styles, variables, and color values.
+   - Prototype flows, triggers, actions, transitions, overlays, scrolling, fixed/sticky behavior, and destinations.
+   - Export settings, image assets, icons, illustrations, logos, and implementation dependencies.
+7. Capture screenshots whenever the visible panel provides evidence:
+   - `layer-structure.png`
+   - `design-properties.png`
+   - `prototype-properties.png`
+   - Additional focused images as `detail-01.png`, `detail-02.png`, and so on.
+8. Copy screenshots from the Computer Use screenshot URL into the handout's `assets/` folder. Never alter the Figma file while capturing.
+9. Fill `handoud.md` using the required structure below.
+10. Verify that every referenced image exists and that observed facts are separated from inference.
+
+## `handoud.md` structure
+
+Use these sections:
+
+```markdown
+# <Selection name> — Design Handout
+
+## Source and scope
+## Screenshot index
+## Directly observed facts
+### Geometry and layout
+### Layer hierarchy and components
+### Typography
+### Colors and appearance
+### Resizing and constraints
+### Prototype and interaction behavior
+### Assets and export requirements
+## Inferences
+## Ambiguities and designer questions
+## Implementation guidance
+## Completeness checklist
+```
+
+For every screenshot, include a relative Markdown image link such as:
+
+```markdown
+![Selection overview](assets/selection-overview.png)
+```
+
+## Evidence standard
+
+- Label values read from Figma as directly observed.
+- Label visually estimated measurements or behavior as inference.
+- Never invent exact font, spacing, color, constraint, or interaction values.
+- Record inaccessible nested properties as ambiguities rather than silently omitting them.
+- If a selection is primarily a screenshot or locked component, document that limitation explicitly.
+- Keep absolute canvas coordinates distinct from internal component spacing.
+
+## Completion checks
+
+Before handing off:
+
+- Confirm the source URL and node ID are recorded.
+- Confirm `handoud.md` exists.
+- Confirm `assets/` contains at least `selection-overview.png`.
+- Confirm dimensions, spacing/layout, typography, colors, components/states, resizing rules, interactions, assets, and ambiguities are addressed.
+- Confirm observed facts and inferences are clearly separated.
+- Confirm no Figma mutation occurred.

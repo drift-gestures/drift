@@ -94,10 +94,21 @@ dependency, or combines several sub-issues into one experience.
 
 ## UI work
 
-Screenshots are evidence, not a complete specification. For UI work, use
-`drift-figma-handout-pack` to record design intent, relationships, states,
-interactions, resizing behavior, exact constraints, and intentionally flexible
-details.
+Figma design evidence is user-owned input. Before invoking
+`drift-figma-handout-pack`, ask the user for the relevant Figma design selection
+URL containing a `node-id` and wait for both that link and explicit
+authorization to start the issue.
+Never invoke the handout skill from product discussion alone.
+
+UI issues may be shaped and published with the design handout explicitly
+pending. When the user later asks Codex to start the issue, obtain the Figma
+selection link first, then use `drift-figma-handout-pack` to record design intent,
+relationships, states, interactions, resizing behavior, exact constraints, and
+intentionally flexible details. Do not begin UI implementation until the user
+approves that handout.
+
+Screenshots, exports, and descriptions may supplement the user-provided Figma
+selection, but they do not replace its required selection URL.
 
 Implementation must be checked in the running interface where practical.
 Compare the actual result with the approved handout instead of judging fidelity

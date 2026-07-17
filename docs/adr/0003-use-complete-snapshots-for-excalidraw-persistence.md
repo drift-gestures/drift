@@ -1,0 +1,3 @@
+# Use complete snapshots for Excalidraw persistence
+
+Excalidraw persistence uses complete, self-contained drawing snapshots instead of incremental change messages because a successful save must not depend on every earlier message having arrived. A reusable drawing-session owner coordinates background autosave and save-gated close, waits for native persistence acknowledgement before teardown, and keeps derived thumbnail generation outside the durability boundary. Close-save requests time out after ten seconds and may be superseded immediately, but obsolete work cannot commit over the current request. After failure or timeout, users may explicitly confirm an unsafe close that abandons changes since the last successful background autosave.

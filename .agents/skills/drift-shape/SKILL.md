@@ -24,9 +24,14 @@ Delegate bounded codebase discovery to `drift-scout`. Consult
 architecture, persistence, permission, security, concurrency, or platform
 decision.
 
-For UI work, use `drift-figma-handout-pack` before finalizing the issue. Accept
-screenshots, exports, descriptions, or available Figma context; do not require
-Figma MCP access. Use `drift-ui-specialist` for the design interpretation.
+For UI work, do not invoke `drift-figma-handout-pack` during shaping unless the
+user has already supplied the relevant Figma design and explicitly asked to
+prepare the handout. The supplied design must be a selection URL containing a
+`node-id`. Otherwise publish the issue with its design handout marked
+as required before implementation. When the user later asks to start the
+issue, the build workflow requests the Figma selection link before invoking the
+handout skill. Use `drift-ui-specialist` for design interpretation after that
+entry gate is satisfied.
 
 ## Form the work
 
@@ -41,7 +46,7 @@ The draft must make the intended product legible:
 - behavior and interaction rules;
 - scope and non-goals;
 - acceptance criteria;
-- relevant design handout;
+- relevant approved design handout, or an explicit handout-before-implementation dependency;
 - important risks or decisions;
 - dependencies and blocking relationships.
 

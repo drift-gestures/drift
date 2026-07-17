@@ -1,4 +1,4 @@
 interface:
   display_name: "Drift Figma Handout Pack"
-  short_description: "Turn Figma evidence into a precise UI handout"
-  default_prompt: "Use $drift-figma-handout-pack to prepare an implementation-ready UI handout from this design."
+  short_description: "Create read-only Figma selection handoff packets"
+  default_prompt: "Use $drift-figma-handout-pack to inspect this Figma selection and save a complete design handout with screenshots."

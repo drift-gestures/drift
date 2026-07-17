@@ -31,10 +31,12 @@ destructive data changes, platform support, API availability, or material scope
 expansion. Consult `drift-architect` for that narrow decision and present its
 mental model to the user when approval is required.
 
-For UI work, use `drift-figma-handout-pack`. If the approved issue lacks enough
-design information to judge fidelity, complete the handout with the user before
-implementing. Use `drift-ui-specialist` for design interpretation and reserve
-routine implementation for `drift-engineer`.
+For UI work, ask the user for the relevant Figma design selection URL containing
+a `node-id` when they request that Codex start the issue. Wait for that link before invoking
+`drift-figma-handout-pack`, even when the approved issue contains screenshots or
+product descriptions. Complete the handout with the user and obtain approval
+before implementing. Use `drift-ui-specialist` for design interpretation and
+reserve routine implementation for `drift-engineer`.
 
 ## Deliver the whole change
 
