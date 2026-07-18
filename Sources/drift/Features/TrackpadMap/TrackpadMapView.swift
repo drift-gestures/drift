@@ -113,8 +113,8 @@ struct TrackpadMapView: View {
 
     private func drawScrollRails(in context: inout GraphicsContext, surface: CGRect, size: CGSize) {
         let railExtent: CGFloat = 8
-        let tickThickness = TimerHUDStyle.tickHeight
-        let tickStep = TimerHUDStyle.tickHeight + TimerHUDStyle.tickSpacing
+        let tickThickness: CGFloat = 2
+        let tickStep: CGFloat = 6
         let verticalPhase = (-store.scrollPosition.y * surface.height)
             .truncatingRemainder(dividingBy: tickStep)
         let horizontalPhase = (store.scrollPosition.x * surface.width)

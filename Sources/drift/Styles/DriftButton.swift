@@ -37,7 +37,7 @@ enum DriftButtonVariant {
     var foreground: Color {
         switch self {
         case .hudPrimary, .hudInlineIcon, .hudDark:
-            Color.tick
+            Color.white
         case .hudSecondary:
             Color.white
         case .hudDestructive:
@@ -50,7 +50,7 @@ enum DriftButtonVariant {
     var background: some View {
         switch self {
         case .hudPrimary:
-            Color.timerStartbg
+            Color.accentColor
         case .hudSecondary:
             Color.white.opacity(0.12)
         case .hudDestructive:
