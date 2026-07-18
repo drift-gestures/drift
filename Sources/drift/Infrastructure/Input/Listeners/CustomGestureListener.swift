@@ -2,6 +2,18 @@ import Foundation
 
 /// The single listener responsible for all user-configured basic and advanced gestures.
 struct CustomGestureListener: Listener {
+    /// The recognizer selected when a contact sequence starts. Releasing advanced activation
+    /// makes an advanced contact stale rather than moving it into the basic recognizer.
+    private enum ContactRecognizer {
+        case advanced
+        case basic
+        case stale
+    }
+
+    private static let advancedActivationReleased = CancellationReason(
+        description: "Advanced activation modifiers were released"
+    )
+
     var gestureStatus: GestureStatus = .waiting
     let listensDuringAdvancedGestureMode = true
     private let store: CustomGestureStore
@@ -11,6 +23,7 @@ struct CustomGestureListener: Listener {
     private var snapshots: [TrackpadSnapshot] = []
     private var basicStartSnapshot: TrackpadSnapshot?
     private var basicCandidates: [BasicGesture] = []
+    private var activeContactRecognizer: ContactRecognizer?
 
     init(
         store: CustomGestureStore,
@@ -31,9 +44,45 @@ struct CustomGestureListener: Listener {
             return ListenerDecision(stopPropagation: true)
         }
         let focusedApplicationBundleIdentifier = focusedApplicationBundleIdentifier()
-        return modeState.isAdvancedModeActive
-            ? handleAdvanced(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
-            : handleBasic(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
+        let recognizer = recognizer(for: snapshot)
+        let decision = switch recognizer {
+        case .advanced:
+            handleAdvanced(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
+        case .basic:
+            handleBasic(snapshot, focusedApplicationBundleIdentifier: focusedApplicationBundleIdentifier)
+        case .stale:
+            handleStale(snapshot)
+        }
+        if snapshot.phase == .ended {
+            resetContactRecognition()
+        }
+        return decision
+    }
+
+    /// Selects a recognizer at contact start. An advanced contact becomes stale if activation is
+    /// released, and stays stale until the zero-contact frame resets listener state.
+    private mutating func recognizer(for snapshot: TrackpadSnapshot) -> ContactRecognizer {
+        if snapshot.phase == .began {
+            if activeContactRecognizer == .stale {
+                return .stale
+            }
+            resetContactRecognition()
+            let recognizer: ContactRecognizer = modeState.isAdvancedModeActive ? .advanced : .basic
+            activeContactRecognizer = recognizer
+            return recognizer
+        }
+
+        if activeContactRecognizer == .advanced, !modeState.isAdvancedModeActive {
+            activeContactRecognizer = .stale
+        }
+        return activeContactRecognizer ?? (modeState.isAdvancedModeActive ? .advanced : .basic)
+    }
+
+    /// Discards the remaining frames for an advanced contact whose activation was released.
+    /// Keeping the contact stale prevents either recognizer from consuming it before lift.
+    private mutating func handleStale(_ snapshot: TrackpadSnapshot) -> ListenerDecision {
+        gestureStatus = .cancelled(snapshot, reason: Self.advancedActivationReleased)
+        return ListenerDecision(stopPropagation: true)
     }
 
     private mutating func handleAdvanced(
@@ -223,6 +272,16 @@ struct CustomGestureListener: Listener {
     private mutating func resetBasicGesture() {
         basicStartSnapshot = nil
         basicCandidates.removeAll(keepingCapacity: true)
+        gestureStatus = .waiting
+    }
+
+    /// Clears both recognizers at a contact boundary so no advanced samples or basic candidates
+    /// can survive into the next sequence.
+    private mutating func resetContactRecognition() {
+        snapshots.removeAll(keepingCapacity: true)
+        basicStartSnapshot = nil
+        basicCandidates.removeAll(keepingCapacity: true)
+        activeContactRecognizer = nil
         gestureStatus = .waiting
     }
 

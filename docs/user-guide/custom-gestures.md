@@ -19,7 +19,7 @@ When the gesture is recognized, Drift completes each shortcut before waiting the
 
 ## Basic and advanced gestures
 
-Basic gestures are available normally. Advanced gestures are recognized only while you hold the **Advanced activation** binding at the top of the Custom Gestures settings page; basic gestures are paused during that time. Set or change that binding by clicking it and holding the modifiers you want, then releasing them.
+Basic gestures are available normally. Advanced gestures are recognized only while you hold the **Advanced activation** binding at the top of the Custom Gestures settings page; basic gestures are paused during that time. Set or change that binding by clicking it and holding the modifiers you want, then releasing them. If you release the activation modifiers while a touch is still down, that contact becomes stale: Drift runs neither advanced nor basic gestures until all fingers lift. Drift resets at that lift, and the next touch uses normal (basic) mode unless you hold the activation binding again.
 
 You can limit either kind of gesture to selected applications in its **Scope** section. Leave it at **All Apps** to run everywhere.
 

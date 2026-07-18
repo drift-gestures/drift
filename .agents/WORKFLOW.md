@@ -117,6 +117,19 @@ from SwiftUI code alone.
 Do not invent design values or motion. Follow the UI and animation constraints
 in the nearest `AGENTS.md`.
 
+## Custom gesture activation lifecycle
+
+Advanced-activation modifiers gate the lifetime of an advanced custom-gesture
+attempt, not merely its start. When the required modifiers are released during
+an active trackpad contact, the custom-gesture listener must enter a stale
+state: it must not recognize either basic or advanced gestures for the rest of
+that contact. Reset the listener only when the trackpad reports the zero-contact
+(`.ended`) frame. Do not reinterpret the in-flight contact as a basic gesture,
+and do not complete it as an advanced gesture after activation is released.
+
+Treat this as a product contract. Pause and ask before choosing a different
+modifier-release policy.
+
 ## User guide
 
 `docs/user-guide/` explains the shipped product from the user's perspective.
