@@ -16,11 +16,6 @@
 		100000000000000000000015 /* SwiftBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* SwiftBridge.swift */; };
 		100000000000000000000017 /* EventSuppressionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000017 /* EventSuppressionController.swift */; };
 		100000000000000000000019 /* CTrackpadBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000019 /* CTrackpadBridge.swift */; };
-		10000000000000000000001B /* QuickActionModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001B /* QuickActionModels.swift */; };
-		10000000000000000000001C /* QuickActionSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001C /* QuickActionSurface.swift */; };
-		10000000000000000000001D /* ClipboardHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001D /* ClipboardHistoryView.swift */; };
-		10000000000000000000001E /* EmojiPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001E /* EmojiPickerView.swift */; };
-		10000000000000000000001F /* ClipboardHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001F /* ClipboardHistoryStore.swift */; };
 		100000000000000000000022 /* TrackpadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* TrackpadSnapshot.swift */; };
 		100000000000000000000023 /* ListenerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023 /* ListenerModels.swift */; };
 		100000000000000000000024 /* BackendEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000024 /* BackendEvent.swift */; };
@@ -29,33 +24,9 @@
 		100000000000000000000027 /* HUDStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000027 /* HUDStore.swift */; };
 		100000000000000000000028 /* HUDWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000028 /* HUDWindowPresenter.swift */; };
 		100000000000000000000029 /* HUDTestingSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000029 /* HUDTestingSupport.swift */; };
-		10000000000000000000002A /* TimerHUDInputListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002A /* TimerHUDInputListener.swift */; };
 		10000000000000000000002B /* HUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002B /* HUDController.swift */; };
-		10000000000000000000002C /* BackgroundTimerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002C /* BackgroundTimerModels.swift */; };
-		10000000000000000000002D /* BackgroundTimerCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002D /* BackgroundTimerCoordinator.swift */; };
-		10000000000000000000002E /* PomodoroPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002E /* PomodoroPreferencesStore.swift */; };
-		10000000000000000000002F /* TimerAlertCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002F /* TimerAlertCenter.swift */; };
-		100000000000000000000030 /* TimerMenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000030 /* TimerMenuBarController.swift */; };
-		100000000000000000000031 /* TimerBackgroundWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000031 /* TimerBackgroundWorker.swift */; };
 		100000000000000000000032 /* HUDRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000032 /* HUDRegistry.swift */; };
 		100000000000000000000033 /* AppBackgroundWorkers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000033 /* AppBackgroundWorkers.swift */; };
-		100000000000000000000034 /* ExcalidrawBackgroundWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000034 /* ExcalidrawBackgroundWorker.swift */; };
-		100000000000000000000035 /* ExcalidrawStaticServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000035 /* ExcalidrawStaticServer.swift */; };
-		100000000000000000000036 /* ExcalidrawEditorWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000036 /* ExcalidrawEditorWebView.swift */; };
-		100000000000000000000037 /* ExcalidrawDocumentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000037 /* ExcalidrawDocumentStore.swift */; };
-		100000000000000000000038 /* ExcalidrawModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000038 /* ExcalidrawModels.swift */; };
-		100000000000000000000039 /* ExcalidrawHUDDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000039 /* ExcalidrawHUDDefinition.swift */; };
-		10000000000000000000003A /* ExcalidrawHUDInputListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000003A /* ExcalidrawHUDInputListener.swift */; };
-		10000000000000000000003B /* ExcalidrawHost in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000003B /* ExcalidrawHost */; };
-		100000000000000000000040 /* ExcalidrawHUDColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000040 /* ExcalidrawHUDColors.swift */; };
-		100000000000000000000041 /* ExcalidrawHUDStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000041 /* ExcalidrawHUDStyle.swift */; };
-		100000000000000000000042 /* ExcalidrawHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000042 /* ExcalidrawHUDView.swift */; };
-		100000000000000000000043 /* ExcalidrawLauncherContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000043 /* ExcalidrawLauncherContent.swift */; };
-		100000000000000000000046 /* ExcalidrawSearchContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000046 /* ExcalidrawSearchContent.swift */; };
-		100000000000000000000049 /* ExcalidrawEditorContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000049 /* ExcalidrawEditorContent.swift */; };
-		10000000000000000000004B /* ExcalidrawThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004B /* ExcalidrawThumbnailView.swift */; };
-		10000000000000000000004C /* ExcalidrawSavePromptContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004C /* ExcalidrawSavePromptContent.swift */; };
-		10000000000000000000004D /* TimerPreferencesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004D /* TimerPreferencesStore.swift */; };
 		10000000000000000000004E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004E /* SettingsView.swift */; };
 		10000000000000000000004F /* TrackpadMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000004F /* TrackpadMapStore.swift */; };
 		100000000000000000000050 /* TrackpadMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000050 /* TrackpadMapView.swift */; };
@@ -83,11 +54,6 @@
 		200000000000000000000015 /* SwiftBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftBridge.swift; sourceTree = "<group>"; };
 		200000000000000000000017 /* EventSuppressionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventSuppressionController.swift; sourceTree = "<group>"; };
 		200000000000000000000019 /* CTrackpadBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CTrackpadBridge.swift; sourceTree = "<group>"; };
-		20000000000000000000001B /* QuickActionModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionModels.swift; sourceTree = "<group>"; };
-		20000000000000000000001C /* QuickActionSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionSurface.swift; sourceTree = "<group>"; };
-		20000000000000000000001D /* ClipboardHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardHistoryView.swift; sourceTree = "<group>"; };
-		20000000000000000000001E /* EmojiPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiPickerView.swift; sourceTree = "<group>"; };
-		20000000000000000000001F /* ClipboardHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardHistoryStore.swift; sourceTree = "<group>"; };
 		200000000000000000000022 /* TrackpadSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadSnapshot.swift; sourceTree = "<group>"; };
 		200000000000000000000023 /* ListenerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenerModels.swift; sourceTree = "<group>"; };
 		200000000000000000000024 /* BackendEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendEvent.swift; sourceTree = "<group>"; };
@@ -96,33 +62,9 @@
 		200000000000000000000027 /* HUDStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDStore.swift; sourceTree = "<group>"; };
 		200000000000000000000028 /* HUDWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDWindowPresenter.swift; sourceTree = "<group>"; };
 		200000000000000000000029 /* HUDTestingSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDTestingSupport.swift; sourceTree = "<group>"; };
-		20000000000000000000002A /* TimerHUDInputListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerHUDInputListener.swift; sourceTree = "<group>"; };
 		20000000000000000000002B /* HUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDController.swift; sourceTree = "<group>"; };
-		20000000000000000000002C /* BackgroundTimerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTimerModels.swift; sourceTree = "<group>"; };
-		20000000000000000000002D /* BackgroundTimerCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTimerCoordinator.swift; sourceTree = "<group>"; };
-		20000000000000000000002E /* PomodoroPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroPreferencesStore.swift; sourceTree = "<group>"; };
-		20000000000000000000002F /* TimerAlertCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAlertCenter.swift; sourceTree = "<group>"; };
-		200000000000000000000030 /* TimerMenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerMenuBarController.swift; sourceTree = "<group>"; };
-		200000000000000000000031 /* TimerBackgroundWorker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerBackgroundWorker.swift; sourceTree = "<group>"; };
 		200000000000000000000032 /* HUDRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDRegistry.swift; sourceTree = "<group>"; };
 		200000000000000000000033 /* AppBackgroundWorkers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackgroundWorkers.swift; sourceTree = "<group>"; };
-		200000000000000000000034 /* ExcalidrawBackgroundWorker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawBackgroundWorker.swift; sourceTree = "<group>"; };
-		200000000000000000000035 /* ExcalidrawStaticServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawStaticServer.swift; sourceTree = "<group>"; };
-		200000000000000000000036 /* ExcalidrawEditorWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawEditorWebView.swift; sourceTree = "<group>"; };
-		200000000000000000000037 /* ExcalidrawDocumentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawDocumentStore.swift; sourceTree = "<group>"; };
-		200000000000000000000038 /* ExcalidrawModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawModels.swift; sourceTree = "<group>"; };
-		200000000000000000000039 /* ExcalidrawHUDDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawHUDDefinition.swift; sourceTree = "<group>"; };
-		20000000000000000000003A /* ExcalidrawHUDInputListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawHUDInputListener.swift; sourceTree = "<group>"; };
-		20000000000000000000003B /* ExcalidrawHost */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ExcalidrawHost; sourceTree = "<group>"; };
-		200000000000000000000040 /* ExcalidrawHUDColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawHUDColors.swift; sourceTree = "<group>"; };
-		200000000000000000000041 /* ExcalidrawHUDStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawHUDStyle.swift; sourceTree = "<group>"; };
-		200000000000000000000042 /* ExcalidrawHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawHUDView.swift; sourceTree = "<group>"; };
-		200000000000000000000043 /* ExcalidrawLauncherContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawLauncherContent.swift; sourceTree = "<group>"; };
-		200000000000000000000046 /* ExcalidrawSearchContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawSearchContent.swift; sourceTree = "<group>"; };
-		200000000000000000000049 /* ExcalidrawEditorContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawEditorContent.swift; sourceTree = "<group>"; };
-		20000000000000000000004B /* ExcalidrawThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawThumbnailView.swift; sourceTree = "<group>"; };
-		20000000000000000000004C /* ExcalidrawSavePromptContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcalidrawSavePromptContent.swift; sourceTree = "<group>"; };
-		20000000000000000000004D /* TimerPreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerPreferencesStore.swift; sourceTree = "<group>"; };
 		20000000000000000000004E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		20000000000000000000004F /* TrackpadMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadMapStore.swift; sourceTree = "<group>"; };
 		200000000000000000000050 /* TrackpadMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadMapView.swift; sourceTree = "<group>"; };
@@ -149,20 +91,6 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		40000000000000000000001E /* Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (); explicitFileTypes = {}; explicitFolders = (); path = Tests; sourceTree = SOURCE_ROOT; };
-		AE1483D42FF2F177008D484B /* Timer */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Timer; sourceTree = "<group>"; };
-		AE3C8F4D2FF5511E00EC474F /* assets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (AE3C8F512FF551FE00EC474F /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = assets; sourceTree = "<group>"; };
-		AE420A182FF7A7E50055C84A /* Utilities */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Utilities; sourceTree = "<group>"; };
-		AE420A492FF816470055C84A /* Styles */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Styles; sourceTree = "<group>"; };
-/* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		300000000000000000000001 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		300000000000000000000002 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -286,13 +214,10 @@
 			isa = PBXGroup;
 			children = (
 				40000000000000000000001D /* CustomGestures */,
-				400000000000000000000018 /* Excalidraw */,
 				400000000000000000000015 /* HUD */,
 				40000000000000000000000D /* Logging */,
-				40000000000000000000000E /* QuickActions */,
 				40000000000000000000001B /* Settings */,
 				40000000000000000000001C /* TrackpadMap */,
-				400000000000000000000017 /* Timers */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -303,34 +228,6 @@
 				200000000000000000000008 /* LoggingView.swift */,
 			);
 			path = Logging;
-			sourceTree = "<group>";
-		};
-		40000000000000000000000E /* QuickActions */ = {
-			isa = PBXGroup;
-			children = (
-				400000000000000000000014 /* Clipboard */,
-				40000000000000000000000F /* Models */,
-				400000000000000000000011 /* Views */,
-			);
-			path = QuickActions;
-			sourceTree = "<group>";
-		};
-		40000000000000000000000F /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000001B /* QuickActionModels.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		400000000000000000000011 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000001C /* QuickActionSurface.swift */,
-				20000000000000000000001D /* ClipboardHistoryView.swift */,
-				20000000000000000000001E /* EmojiPickerView.swift */,
-			);
-			path = Views;
 			sourceTree = "<group>";
 		};
 		400000000000000000000012 /* Infrastructure */ = {
@@ -353,14 +250,6 @@
 			path = Input;
 			sourceTree = "<group>";
 		};
-		400000000000000000000014 /* Clipboard */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000001F /* ClipboardHistoryStore.swift */,
-			);
-			path = Clipboard;
-			sourceTree = "<group>";
-		};
 		400000000000000000000015 /* HUD */ = {
 			isa = PBXGroup;
 			children = (
@@ -369,7 +258,6 @@
 				200000000000000000000027 /* HUDStore.swift */,
 				200000000000000000000029 /* HUDTestingSupport.swift */,
 				200000000000000000000028 /* HUDWindowPresenter.swift */,
-				AE1483D42FF2F177008D484B /* Timer */,
 			);
 			path = HUD;
 			sourceTree = "<group>";
@@ -378,59 +266,13 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000054 /* CustomGestureListener.swift */,
-				20000000000000000000003A /* ExcalidrawHUDInputListener.swift */,
-				20000000000000000000002A /* TimerHUDInputListener.swift */,
 			);
 			path = Listeners;
-			sourceTree = "<group>";
-		};
-		400000000000000000000017 /* Timers */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000002D /* BackgroundTimerCoordinator.swift */,
-				20000000000000000000002C /* BackgroundTimerModels.swift */,
-				20000000000000000000002E /* PomodoroPreferencesStore.swift */,
-				20000000000000000000002F /* TimerAlertCenter.swift */,
-				200000000000000000000031 /* TimerBackgroundWorker.swift */,
-				200000000000000000000030 /* TimerMenuBarController.swift */,
-				20000000000000000000004D /* TimerPreferencesStore.swift */,
-			);
-			path = Timers;
-			sourceTree = "<group>";
-		};
-		400000000000000000000018 /* Excalidraw */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000034 /* ExcalidrawBackgroundWorker.swift */,
-				200000000000000000000037 /* ExcalidrawDocumentStore.swift */,
-				200000000000000000000036 /* ExcalidrawEditorWebView.swift */,
-				200000000000000000000039 /* ExcalidrawHUDDefinition.swift */,
-				40000000000000000000001A /* ExcalidrawHUDComponents */,
-				200000000000000000000038 /* ExcalidrawModels.swift */,
-				200000000000000000000035 /* ExcalidrawStaticServer.swift */,
-			);
-			path = Excalidraw;
-			sourceTree = "<group>";
-		};
-		40000000000000000000001A /* ExcalidrawHUDComponents */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000049 /* ExcalidrawEditorContent.swift */,
-				200000000000000000000040 /* ExcalidrawHUDColors.swift */,
-				200000000000000000000041 /* ExcalidrawHUDStyle.swift */,
-				200000000000000000000042 /* ExcalidrawHUDView.swift */,
-				200000000000000000000043 /* ExcalidrawLauncherContent.swift */,
-				20000000000000000000004C /* ExcalidrawSavePromptContent.swift */,
-				200000000000000000000046 /* ExcalidrawSearchContent.swift */,
-				20000000000000000000004B /* ExcalidrawThumbnailView.swift */,
-			);
-			path = ExcalidrawHUDComponents;
 			sourceTree = "<group>";
 		};
 		400000000000000000000019 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				20000000000000000000003B /* ExcalidrawHost */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -474,7 +316,6 @@
 			buildPhases = (
 				700000000000000000000001 /* Sources */,
 				300000000000000000000001 /* Frameworks */,
-				700000000000000000000003 /* Build Excalidraw Host */,
 				700000000000000000000002 /* Resources */,
 			);
 			buildRules = (
@@ -482,7 +323,6 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				AE1483D42FF2F177008D484B /* Timer */,
 				AE420A182FF7A7E50055C84A /* Utilities */,
 				AE420A492FF816470055C84A /* Styles */,
 			);
@@ -553,38 +393,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				10000000000000000000003B /* ExcalidrawHost in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		700000000000000000000003 /* Build Excalidraw Host */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/Web/ExcalidrawHost/package.json",
-				"$(SRCROOT)/Web/ExcalidrawHost/package-lock.json",
-				"$(SRCROOT)/Web/ExcalidrawHost/src/main.jsx",
-				"$(SRCROOT)/Web/ExcalidrawHost/src/styles.css",
-				"$(SRCROOT)/Web/ExcalidrawHost/vite.config.js",
-			);
-			name = "Build Excalidraw Host";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/Sources/drift/Resources/ExcalidrawHost/index.html",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\n\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\n\nif [ -s \"$HOME/.nvm/nvm.sh\" ]; then\n  . \"$HOME/.nvm/nvm.sh\"\nfi\n\nHOST_DIR=\"$SRCROOT/Web/ExcalidrawHost\"\n\nif [ ! -d \"$HOST_DIR\" ]; then\n  echo \"error: Excalidraw host directory not found: $HOST_DIR\"\n  exit 1\nfi\n\nif ! command -v npm >/dev/null 2>&1; then\n  echo \"error: npm is required to build the Excalidraw host. Install Node.js before building drift from Xcode.\"\n  exit 1\nfi\n\ncd \"$HOST_DIR\"\nnpm run build\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -602,35 +416,15 @@
 				100000000000000000000001 /* main.swift in Sources */,
 				100000000000000000000033 /* AppBackgroundWorkers.swift in Sources */,
 				100000000000000000000002 /* AppDelegate.swift in Sources */,
-				100000000000000000000034 /* ExcalidrawBackgroundWorker.swift in Sources */,
-				100000000000000000000037 /* ExcalidrawDocumentStore.swift in Sources */,
-				100000000000000000000036 /* ExcalidrawEditorWebView.swift in Sources */,
-				100000000000000000000039 /* ExcalidrawHUDDefinition.swift in Sources */,
-				100000000000000000000049 /* ExcalidrawEditorContent.swift in Sources */,
-				100000000000000000000040 /* ExcalidrawHUDColors.swift in Sources */,
-				100000000000000000000041 /* ExcalidrawHUDStyle.swift in Sources */,
-				100000000000000000000042 /* ExcalidrawHUDView.swift in Sources */,
-				100000000000000000000043 /* ExcalidrawLauncherContent.swift in Sources */,
-				10000000000000000000004C /* ExcalidrawSavePromptContent.swift in Sources */,
-				100000000000000000000046 /* ExcalidrawSearchContent.swift in Sources */,
-				10000000000000000000004B /* ExcalidrawThumbnailView.swift in Sources */,
-				10000000000000000000004D /* TimerPreferencesStore.swift in Sources */,
 				10000000000000000000004E /* SettingsView.swift in Sources */,
 				10000000000000000000004F /* TrackpadMapStore.swift in Sources */,
 				100000000000000000000050 /* TrackpadMapView.swift in Sources */,
-				100000000000000000000038 /* ExcalidrawModels.swift in Sources */,
-				100000000000000000000035 /* ExcalidrawStaticServer.swift in Sources */,
 				100000000000000000000003 /* GestureModels.swift in Sources */,
 				100000000000000000000004 /* ActivityLogStore.swift in Sources */,
 				100000000000000000000008 /* LoggingView.swift in Sources */,
 				100000000000000000000015 /* SwiftBridge.swift in Sources */,
 				100000000000000000000017 /* EventSuppressionController.swift in Sources */,
 				100000000000000000000019 /* CTrackpadBridge.swift in Sources */,
-				10000000000000000000001B /* QuickActionModels.swift in Sources */,
-				10000000000000000000001C /* QuickActionSurface.swift in Sources */,
-				10000000000000000000001D /* ClipboardHistoryView.swift in Sources */,
-				10000000000000000000001E /* EmojiPickerView.swift in Sources */,
-				10000000000000000000001F /* ClipboardHistoryStore.swift in Sources */,
 				100000000000000000000022 /* TrackpadSnapshot.swift in Sources */,
 				100000000000000000000023 /* ListenerModels.swift in Sources */,
 				100000000000000000000024 /* BackendEvent.swift in Sources */,
@@ -639,16 +433,8 @@
 				100000000000000000000027 /* HUDStore.swift in Sources */,
 				100000000000000000000028 /* HUDWindowPresenter.swift in Sources */,
 				100000000000000000000029 /* HUDTestingSupport.swift in Sources */,
-				10000000000000000000003A /* ExcalidrawHUDInputListener.swift in Sources */,
-				10000000000000000000002A /* TimerHUDInputListener.swift in Sources */,
 				10000000000000000000002B /* HUDController.swift in Sources */,
 				100000000000000000000032 /* HUDRegistry.swift in Sources */,
-				10000000000000000000002C /* BackgroundTimerModels.swift in Sources */,
-				10000000000000000000002D /* BackgroundTimerCoordinator.swift in Sources */,
-				10000000000000000000002E /* PomodoroPreferencesStore.swift in Sources */,
-				10000000000000000000002F /* TimerAlertCenter.swift in Sources */,
-				100000000000000000000031 /* TimerBackgroundWorker.swift in Sources */,
-				100000000000000000000030 /* TimerMenuBarController.swift in Sources */,
 				100000000000000000000009 /* driftMultitouch.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

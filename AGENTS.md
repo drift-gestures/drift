@@ -30,6 +30,20 @@
 - Never choose between raising a deployment target and adding API-availability gating without explicit user approval. Treat supported-platform changes as a material product decision, even when one direction appears consistent with existing code.
 - Do not over-clarify obvious choices. When the intended file, workspace, or next step is clear from context, proceed.
 
+## Workspace and Repository Access
+
+- Agents may create, edit, move, and delete any file or directory within this
+  repository when that work is in scope for the user's request. Do not treat
+  files as read-only merely because they are configuration, documentation,
+  generated artifacts, or hidden files.
+- Agents may run any ordinary `git` or `gh` command needed to inspect,
+  implement, verify, commit, push, or coordinate repository work without
+  separately asking for permission.
+- Treat operations that can permanently discard local work, rewrite published
+  history, force-update or delete remote branches/tags, delete repositories or
+  releases, or broadly change repository access/settings as dangerous. Obtain
+  explicit user approval before those operations.
+
 ## Change Ownership
 
 - If the user removes a style constant, dimension, animation, transition, or abstraction, do not re-add it under a new name or reintroduce the same idea elsewhere unless the user explicitly asks for it. Treat removals as intentional design direction.
@@ -52,7 +66,6 @@
 - When creating or updating GitHub issues, use the repository or project’s real fields for priority, effort, status, and similar metadata. Do not duplicate those values in the issue body.
 - If the required project fields are unavailable or cannot be written, stop and report the access blocker instead of substituting body text for fields.
 - Before starting or refreshing GitHub authorization (including a device-login flow), ask the user for approval every time.
-- Always run `gh` commands outside the sandbox by requesting approval through the command popup. Do not first attempt the command inside the sandbox, and do not ask the user to copy and run the command manually.
 - Use GitHub's issue APIs, not project fields, for issue Type and organization-level issue fields. Use API version `2026-03-10`:
   - After `gh issue create` returns an issue number, run both the Type PATCH command and the field-values POST command below before reporting the issue as created.
   - List valid issue types with `gh api -H 'X-GitHub-Api-Version: 2026-03-10' repos/OWNER/REPO/issue-types`.

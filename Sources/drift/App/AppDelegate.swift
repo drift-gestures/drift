@@ -20,10 +20,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let trackpadMapStore = TrackpadMapStore()
     /// Whether the virtual trackpad is currently visible and should process snapshots.
     private var isTrackpadMapEnabled = false
-    /// Menu item used to reflect and toggle Timer HUD visibility.
-    private var timerHUDMenuItem: NSMenuItem?
-    /// Menu item used to reflect and toggle Excalidraw HUD visibility.
-    private var excalidrawHUDMenuItem: NSMenuItem?
     /// In-memory diagnostics store displayed by the live log.
     private let activityLog = ActivityLogStore()
     /// Main-actor state displayed by Settings for foreground-event suppression recovery.
@@ -52,8 +48,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let hudVisibilityState = HUDVisibilityState()
     /// Thread-safe marker for HUDs opened by temporary testing controls.
     private let hudTestingState = HUDTestingState()
-    /// Persisted gates read synchronously by gesture listeners.
-    private let featureListenerState = FeatureListenerState()
     /// Message bus for delivering backend inputs to visible HUD views.
     private let hudMessages = HUDMessageBus()
     /// Main-actor source of truth for HUD visibility and state.
@@ -89,22 +83,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 focusedApplicationBundleIdentifier: {
                     NSWorkspace.shared.frontmostApplication?.bundleIdentifier
                 }
-            ),
-            TimerHUDInputListener(
-                hudController: hudController,
-                isTimerEnabled: { [featureListenerState] in
-                    featureListenerState.isEnabled(.timer)
-                },
-                isPomodoroEnabled: { [featureListenerState] in
-                    featureListenerState.isEnabled(.pomodoro)
-                }
-            ),
-            ExcalidrawHUDInputListener(
-                hudController: hudController,
-                modeState: hudRegistry.excalidrawModeState,
-                isEnabled: { [featureListenerState] in
-                    featureListenerState.isEnabled(.excalidraw)
-                }
             )
         ],
         customGestureModeState: customGestureModeState,
@@ -128,10 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 self.trackpadMapStore.update(with: snapshot)
             }
         },
-        shouldReceiveKeyboardInteraction: { [hudController] _ in
-            hudController.isActive(TimerHUDDefinition.hudID) ||
-            hudController.isActive(ExcalidrawHUDDefinition.hudID)
-        }
+        shouldReceiveKeyboardInteraction: { _ in false }
     )
 
     /// Starts the input bridge, menu-bar UI, HUD presenter, and live log after launch.
@@ -190,25 +165,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         liveLogItem.target = self
         menu.addItem(liveLogItem)
         menu.addItem(.separator())
-        let hudsMenu = NSMenu()
-        let timerItem = NSMenuItem(title: "Timer HUD", action: #selector(toggleTimerHUD), keyEquivalent: "t")
-        timerItem.target = self
-        hudsMenu.addItem(timerItem)
-        let excalidrawItem = NSMenuItem(title: "Excalidraw HUD", action: #selector(toggleExcalidrawHUD), keyEquivalent: "e")
-        excalidrawItem.target = self
-        hudsMenu.addItem(excalidrawItem)
-        let hudsItem = NSMenuItem(title: "HUDs", action: nil, keyEquivalent: "")
-        hudsItem.submenu = hudsMenu
-        menu.addItem(hudsItem)
-        timerHUDMenuItem = timerItem
-        excalidrawHUDMenuItem = excalidrawItem
         menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "Quit drift", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
         item.menu = menu
         statusItem = item
-        updateHUDMenuState()
     }
 
     /// Opens the live log from the menu item action.
@@ -224,31 +186,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// Refreshes menu item state immediately before the menu opens.
     /// - Parameter menu: The menu that is about to open.
     func menuWillOpen(_ menu: NSMenu) {
-        updateHUDMenuState()
-    }
-
-    /// Toggles Timer HUD visibility from the menu bar.
-    @objc private func toggleTimerHUD() {
-        let hudID = TimerHUDDefinition.hudID
-        let isActive = hudController.isActive(hudID)
-        let isActiveAfterToggle = hudTestingController.toggle(hudID)
-        activityLog.record("\(isActive ? "Closed" : "Opened") Timer HUD from the menu bar.", category: .system)
-        if isActiveAfterToggle {
-            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
-        }
-        updateHUDMenuState()
-    }
-
-    /// Toggles Excalidraw HUD visibility from the menu bar.
-    @objc private func toggleExcalidrawHUD() {
-        let hudID = ExcalidrawHUDDefinition.hudID
-        let isActive = hudController.isActive(hudID)
-        let isActiveAfterToggle = hudTestingController.toggle(hudID)
-        activityLog.record("\(isActive ? "Closed" : "Opened") Excalidraw HUD from the menu bar.", category: .system)
-        if isActiveAfterToggle {
-            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
-        }
-        updateHUDMenuState()
     }
 
     /// Observes completed listener events for logging, haptics, and menu synchronization.
@@ -261,50 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
             }
             activityLog.record("Performed custom gesture \(id).", category: .action)
-        case .timerHUDDidOpen:
-            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
-            activityLog.record("Opened Timer HUD from the bottom-left swipe.", category: .action)
-            updateHUDMenuState()
-        case .timerHUDDidClose(let reason):
-            let reasonText = switch reason {
-            case .clickOutside: "an outside click"
-            case .escape: "Escape"
-            }
-            activityLog.record("Closed Timer HUD from \(reasonText).", category: .action)
-            updateHUDMenuState()
-        case .timerHUDDidReceiveInput(let input):
-            activityLog.record("Timer HUD received \(input.kind.displayName).", category: .action)
-        case .excalidrawHUDDidOpen:
-            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
-            activityLog.record("Opened Excalidraw HUD from the top-edge swipe.", category: .action)
-            updateHUDMenuState()
-        case .excalidrawHUDDidClose(let reason):
-            let reasonText = switch reason {
-            case .clickOutside: "an outside click"
-            case .escape: "Escape"
-            case .commandW: "Command-W"
-            }
-            activityLog.record("Closed Excalidraw HUD from \(reasonText).", category: .action)
-            updateHUDMenuState()
-        case .excalidrawHUDDidReceiveInput(let input):
-            let inputText = switch input.kind {
-            case .moveLeft: "move left"
-            case .moveRight: "move right"
-            case .execute: "execute"
-            }
-            activityLog.record("Excalidraw HUD received \(inputText).", category: .action)
         }
-    }
-
-    /// Synchronizes the Timer HUD menu item title and checkmark with current HUD state.
-    private func updateHUDMenuState() {
-        let isTimerActive = hudController.isActive(TimerHUDDefinition.hudID)
-        timerHUDMenuItem?.state = isTimerActive ? .on : .off
-        timerHUDMenuItem?.title = isTimerActive ? "Hide Timer HUD" : "Show Timer HUD"
-
-        let isExcalidrawActive = hudController.isActive(ExcalidrawHUDDefinition.hudID)
-        excalidrawHUDMenuItem?.state = isExcalidrawActive ? .on : .off
-        excalidrawHUDMenuItem?.title = isExcalidrawActive ? "Hide Excalidraw HUD" : "Show Excalidraw HUD"
     }
 
     /// Creates or focuses the live-log window.
@@ -325,23 +219,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// Creates or focuses the app settings window.
     private func openSettings() {
         if settingsWindow == nil {
-            let timerWorker = hudRegistry.timerWorker
             let view = SettingsView(
                 eventSuppressionStatus: eventSuppressionStatus,
-                documents: hudRegistry.excalidrawWorker.documents,
-                timerPreferences: timerWorker.timerPreferences,
-                pomodoroPreferences: timerWorker.pomodoroPreferences,
                 customGestures: customGestureSettingsModel,
-                timerWorker: timerWorker,
-                setTimerListenerEnabled: { [featureListenerState] enabled in
-                    featureListenerState.setEnabled(enabled, for: .timer)
-                },
-                setPomodoroListenerEnabled: { [featureListenerState] enabled in
-                    featureListenerState.setEnabled(enabled, for: .pomodoro)
-                },
-                setExcalidrawListenerEnabled: { [featureListenerState] enabled in
-                    featureListenerState.setEnabled(enabled, for: .excalidraw)
-                },
                 setVirtualTrackpadEnabled: { [weak self] enabled in
                     self?.setVirtualTrackpadEnabled(enabled)
                 },
