@@ -462,7 +462,7 @@ final class CustomGestureTests: XCTestCase {
         XCTAssertEqual(basicResult.activities.count, 2)
     }
 
-    func testAdvancedContactStaysAdvancedAfterActivationModifiersReleaseAndRearmsBasic() throws {
+    func testAdvancedActivationReleaseStalesOnlyTheCurrentContact() throws {
         let suiteName = "CustomGestureTests.\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -470,7 +470,7 @@ final class CustomGestureTests: XCTestCase {
         let advancedSnapshots = [
             trackpadSnapshot(x: 0.2, y: 0.8, frame: 1, phase: .began),
             trackpadSnapshot(x: 0.3, y: 0.7, frame: 2, phase: .changed),
-            trackpadSnapshot(x: 0.4, y: 0.6, frame: 3, phase: .ended),
+            trackpadSnapshot(x: 0.4, y: 0.6, frame: 5, phase: .ended),
         ]
         let recording = try XCTUnwrap(
             AdvancedGestureRecognizer.recording(from: advancedSnapshots, positionallyAware: true)
@@ -490,36 +490,66 @@ final class CustomGestureTests: XCTestCase {
         library.basicGestures = [basicGesture]
         store.replace(with: library)
 
-        for releaseAfterFrame in [1, 2, 3] {
+        enum ReleaseTiming: CaseIterable {
+            case beforeProgress
+            case duringContact
+            case afterLift
+        }
+
+        for releaseTiming in ReleaseTiming.allCases {
             let modeState = CustomGestureModeState(store: store)
             var listener = CustomGestureListener(store: store, modeState: modeState)
             modeState.update(modifiers: [.control])
 
             _ = listener.onInteraction(advancedSnapshots[0])
-            if releaseAfterFrame == 1 {
+            if releaseTiming == .beforeProgress {
                 modeState.update(modifiers: [])
             }
-            _ = listener.onInteraction(advancedSnapshots[1])
-            if releaseAfterFrame == 2 {
+            let progressResult = listener.onInteraction(advancedSnapshots[1])
+            if releaseTiming == .duringContact {
                 modeState.update(modifiers: [])
+            }
+            if releaseTiming != .afterLift {
+                let staleResult = listener.onInteraction(
+                    trackpadSnapshot(x: 0.35, y: 0.65, frame: 3, phase: .changed)
+                )
+                XCTAssertTrue(staleResult.emittedEvents.isEmpty)
+                XCTAssertTrue(staleResult.stopPropagation)
+                guard case .cancelled = listener.gestureStatus else {
+                    return XCTFail("Expected modifier release to make the contact stale until lift")
+                }
+            }
+            if releaseTiming == .beforeProgress {
+                let unexpectedBeginResult = listener.onInteraction(
+                    trackpadSnapshot(x: 0.5, y: 0.05, frame: 4, phase: .began)
+                )
+                XCTAssertTrue(unexpectedBeginResult.emittedEvents.isEmpty)
+                XCTAssertTrue(unexpectedBeginResult.stopPropagation)
+                guard case .cancelled = listener.gestureStatus else {
+                    return XCTFail("Expected a stale contact to ignore a began frame before lift")
+                }
             }
             let advancedResult = listener.onInteraction(advancedSnapshots[2])
-            if releaseAfterFrame == 3 {
+
+            if releaseTiming == .afterLift {
+                guard case .customGestureRecognized(let id, _, .advanced) = advancedResult.emittedEvents.first else {
+                    return XCTFail("Expected advanced recognition before activation is released")
+                }
+                XCTAssertEqual(id, advancedGesture.id)
                 modeState.update(modifiers: [])
+            } else {
+                XCTAssertTrue(progressResult.emittedEvents.isEmpty)
+                XCTAssertTrue(progressResult.stopPropagation)
+                XCTAssertTrue(advancedResult.emittedEvents.isEmpty)
+                XCTAssertTrue(advancedResult.stopPropagation)
             }
-
-            guard case .customGestureRecognized(let id, _, .advanced) = advancedResult.emittedEvents.first else {
-                return XCTFail("Expected the contact to finish in the advanced recognizer")
-            }
-            XCTAssertEqual(id, advancedGesture.id)
-            XCTAssertTrue(advancedResult.stopPropagation)
             guard case .waiting = listener.gestureStatus else {
-                return XCTFail("Expected the listener to reset after the advanced contact ends")
+                return XCTFail("Expected only the zero-contact frame to reset the listener")
             }
 
-            _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 4, phase: .began))
+            _ = listener.onInteraction(trackpadSnapshot(x: 0.5, y: 0.05, frame: 6, phase: .began))
             let basicResult = listener.onInteraction(
-                trackpadSnapshot(x: 0.5, y: 0.3, frame: 5, phase: .changed)
+                trackpadSnapshot(x: 0.5, y: 0.3, frame: 7, phase: .changed)
             )
             guard case .customGestureRecognized(let id, _, .basic) = basicResult.emittedEvents.first else {
                 return XCTFail("Expected the following contact to use the basic recognizer")
